@@ -26,6 +26,14 @@ npm run ios            # or: npm run android / npm run web
 4. Enable email auth, and configure Apple / Google as OAuth providers in Supabase Auth settings (you'll need your own Apple Services ID and Google OAuth client — see `.env.example` for the Google client ID vars).
 5. Put your project URL and anon key in `.env`.
 
+### Deploying a web preview to Netlify
+
+This is a React Native app, not a web app, but Expo can also export it as a static site (via react-native-web) — useful for a quick visual preview without a simulator. `netlify.toml` at the repo root is already set up for this: build command `npx expo export --platform web`, publish directory `dist`.
+
+1. In Netlify, create a new site from this repo/branch — it'll pick up `netlify.toml` automatically.
+2. Add `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` as Netlify environment variables (Site settings → Environment variables) so sign-up/sign-in actually work. **Without them, the app still renders** (it falls back to a placeholder client rather than crashing — see `src/api/supabase.ts`), but every screen past sign-up requires a real backend, so you'll only be able to look at Splash → Goal Selection → Personalization → Sign-up.
+3. A few things won't work on web regardless of backend, since they're native-only: Sign in with Apple (hidden automatically on non-iOS), the iOS widget (irrelevant on web), and push notifications.
+
 ### iOS widget (optional, needs a Mac)
 
 The `targets/widget` folder defines a WidgetKit extension via `@bacons/apple-targets`, showing streak/level/credits on the home and lock screen. It only builds as part of a native iOS build (not Expo Go):
