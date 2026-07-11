@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { SplashScreen } from '@/screens/onboarding/SplashScreen';
 import { useAppFonts } from '@/theme/useAppFonts';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function App() {
   const fontsLoaded = useAppFonts();
@@ -14,7 +15,7 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar style="light" />
-        {fontsLoaded ? <RootNavigator /> : <SplashScreen />}
+        <ErrorBoundary>{fontsLoaded ? <RootNavigator /> : <SplashScreen />}</ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

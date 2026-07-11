@@ -46,11 +46,21 @@ export async function signInWithApple() {
  * Hook wrapping expo-auth-session's Google provider. Requires
  * EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID / EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID to be
  * set from a Google Cloud OAuth client (see README "Auth setup").
+ *
+ * `Google.useAuthRequest` throws synchronously (in a `useMemo`, so it's an
+ * uncaught render-phase error — blanks the whole app) if the client id for
+ * the current platform is missing. Falling back to a placeholder string
+ * satisfies that check without configuration; `isGoogleSignInConfigured`
+ * reports whether real credentials are set, which SignUpScreen checks
+ * before ever calling `promptAsync`.
  */
+export const isGoogleSignInConfigured =
+  !!process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || !!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+
 export function useGoogleSignInRequest() {
   return Google.useAuthRequest({
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || 'unconfigured',
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || 'unconfigured',
   });
 }
 

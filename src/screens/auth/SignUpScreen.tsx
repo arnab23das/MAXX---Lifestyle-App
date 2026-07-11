@@ -13,6 +13,7 @@ import {
   isAppleSignInAvailable,
   useGoogleSignInRequest,
   signInWithGoogleIdToken,
+  isGoogleSignInConfigured,
 } from '@/api/auth';
 import { useAppStore } from '@/store/appStore';
 import { SIGNUP_ACKNOWLEDGMENT, TERMS_VERSION } from '@/content/legal';
@@ -30,7 +31,6 @@ export function SignUpScreen({ route, navigation }: Props) {
   const selectTrackAndCategories = useAppStore((s) => s.selectTrackAndCategories);
   const acceptTerms = useAppStore((s) => s.acceptTerms);
   const [googleRequest, , promptGoogleSignIn] = useGoogleSignInRequest();
-  const googleConfigured = !!process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || !!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
   React.useEffect(() => {
     if (Platform.OS === 'ios') {
@@ -86,7 +86,7 @@ export function SignUpScreen({ route, navigation }: Props) {
       Alert.alert('One more thing', 'Please agree to the Terms of Use and Privacy Policy to continue.');
       return;
     }
-    if (!googleConfigured || !googleRequest) {
+    if (!isGoogleSignInConfigured || !googleRequest) {
       Alert.alert(
         'Google sign-in setup needed',
         'Set EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID / EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in your .env from a Google Cloud OAuth client (see README "Auth setup").'
