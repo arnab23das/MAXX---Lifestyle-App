@@ -54,8 +54,22 @@ export function SignUpScreen({ route, navigation }: Props) {
     }
     setLoading(true);
     try {
-      const { user } = await signUpWithEmail(email.trim(), password);
-      if (user) await finishOnboarding(user.id);
+      const { user, session } = await signUpWithEmail(email.trim(), password);
+      if (session && user) {
+        // Normal case: email confirmation is off, so sign-up returns an
+        // active session immediately.
+        await finishOnboarding(user.id);
+      } else if (user) {
+        // Supabase created the account but didn't return a session — email
+        // confirmation is required. Without a session there's no authenticated
+        // request we can make, so silently calling finishOnboarding here would
+        // just fail RLS checks with no visible error. Say so instead.
+        Alert.alert(
+          'Check your email',
+          'We sent a confirmation link to your email address. Click it, then come back and sign in. ' +
+            '(If you want to skip this step for testing, turn off "Confirm email" in your Supabase project under Authentication → Providers → Email.)'
+        );
+      }
     } catch (err: any) {
       Alert.alert('Sign-up failed', err.message ?? 'Something went wrong.');
     } finally {
