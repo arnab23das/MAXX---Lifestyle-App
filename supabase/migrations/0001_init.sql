@@ -118,7 +118,25 @@ create policy "journal_owner_all" on public.journal_entries
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ---------------------------------------------------------------------------
--- community: posts, reactions, blocks, reports
+-- blocks (created before community_posts: its RLS policy below references
+-- public.blocks in a subquery, and Postgres runs this whole file as one
+-- transaction — a forward reference here would abort everything)
+-- ---------------------------------------------------------------------------
+create table public.blocks (
+  id uuid primary key default gen_random_uuid(),
+  blocker_id uuid not null references auth.users (id) on delete cascade,
+  blocked_id uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (blocker_id, blocked_id)
+);
+
+alter table public.blocks enable row level security;
+
+create policy "blocks_owner_all" on public.blocks
+  for all using (auth.uid() = blocker_id) with check (auth.uid() = blocker_id);
+
+-- ---------------------------------------------------------------------------
+-- community: posts, reactions, reports
 -- ---------------------------------------------------------------------------
 create table public.community_posts (
   id uuid primary key default gen_random_uuid(),
@@ -168,19 +186,6 @@ create policy "reactions_insert_own" on public.reactions
   for insert with check (auth.uid() = user_id);
 create policy "reactions_delete_own" on public.reactions
   for delete using (auth.uid() = user_id);
-
-create table public.blocks (
-  id uuid primary key default gen_random_uuid(),
-  blocker_id uuid not null references auth.users (id) on delete cascade,
-  blocked_id uuid not null references auth.users (id) on delete cascade,
-  created_at timestamptz not null default now(),
-  unique (blocker_id, blocked_id)
-);
-
-alter table public.blocks enable row level security;
-
-create policy "blocks_owner_all" on public.blocks
-  for all using (auth.uid() = blocker_id) with check (auth.uid() = blocker_id);
 
 -- Required for App Store UGC review (spec §6): reporting objectionable content.
 create table public.reports (
