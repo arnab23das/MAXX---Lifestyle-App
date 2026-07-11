@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "MAXX",
+    "slug": "maxx-lifestyle-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0F111A",
+    "scheme": "maxx",
+    "primaryColor": "#9184D9",
+    "ios": {
+      "bundleIdentifier": "com.maxx.app",
+      "supportsTablet": true,
+      "usesAppleSignIn": true,
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.com.maxx.app.widget"]
+      },
+      "infoPlist": {
+        "NSUserTrackingUsageDescription": "MAXX does not use tracking for advertising. This permission is unused.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIUserInterfaceStyle": "Dark"
+      }
+    },
+    "android": {
+      "package": "com.maxx.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0F111A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#9184D9"
+        }
+      ],
+      "@bacons/apple-targets"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_YOUR_EAS_PROJECT_ID"
+      }
+    }
+  }
+}
