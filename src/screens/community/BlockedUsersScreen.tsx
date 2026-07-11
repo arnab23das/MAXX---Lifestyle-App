@@ -41,7 +41,7 @@ export function BlockedUsersScreen() {
         }
         renderItem={({ item }) => (
           <View style={[styles.row, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
-            <Text style={{ color: theme.colors.textPrimary, flex: 1 }}>{item.blockedId}</Text>
+            <Text style={{ color: theme.colors.textPrimary, flex: 1 }}>{item.blockedDisplayName}</Text>
             <Pressable onPress={() => handleUnblock(item.blockedId)}>
               <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>Unblock</Text>
             </Pressable>

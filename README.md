@@ -66,6 +66,8 @@ Completing a level grants XP + credits and calls `applyActiveDay()`, which:
 
 The SOS screen always shows a fixed crisis banner with one-tap-to-call regional crisis resources (`src/content/crisisResources.ts`) **above** the peer-support broadcast, and the broadcast copy explicitly says it's not a substitute for those resources. Do not reorder this without re-reading §7 of the spec.
 
+Broadcasting is a real two-way loop, not a one-off ping: a broadcaster can cancel their own request, and other nearby users see a "Nearby, right now" list (`getOtherActiveLocalBroadcasts`) they can reply to with a word of support (`sos_broadcast_replies` table, migration `0002`).
+
 ## Design system
 
 The visual language (color, typography, elevation, radii) matches the `design_handoff_maxx_app` UI reference: a dark, near-black, single-blurple-accent ("Nocturne") palette, Inter typeface, and the signature "3D lip" elevation on buttons and path nodes (`src/theme/colors.ts`, `src/theme/index.ts`).

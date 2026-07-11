@@ -78,6 +78,7 @@ export interface Block {
   id: string;
   blockerId: string;
   blockedId: string;
+  blockedDisplayName: string;
   createdAt: string;
 }
 
@@ -96,6 +97,15 @@ export interface SosBroadcast {
   createdAt: string;
   message: string | null;
   active: boolean;
+}
+
+export interface SosBroadcastReply {
+  id: string;
+  broadcastId: string;
+  authorId: string;
+  authorDisplayName: string;
+  message: string;
+  createdAt: string;
 }
 
 export interface CrisisResource {

@@ -112,14 +112,20 @@ export async function reportContent(params: {
   if (error) throw error;
 }
 
-export async function blockUser(blockerId: string, blockedId: string): Promise<Block> {
+export async function blockUser(blockerId: string, blockedId: string, blockedDisplayName: string): Promise<Block> {
   const { data, error } = await supabase
     .from('blocks')
-    .insert({ blocker_id: blockerId, blocked_id: blockedId })
+    .insert({ blocker_id: blockerId, blocked_id: blockedId, blocked_display_name: blockedDisplayName })
     .select()
     .single();
   if (error) throw error;
-  return { id: data.id, blockerId: data.blocker_id, blockedId: data.blocked_id, createdAt: data.created_at };
+  return {
+    id: data.id,
+    blockerId: data.blocker_id,
+    blockedId: data.blocked_id,
+    blockedDisplayName: data.blocked_display_name,
+    createdAt: data.created_at,
+  };
 }
 
 export async function unblockUser(blockerId: string, blockedId: string) {
@@ -134,6 +140,7 @@ export async function getMyBlocks(blockerId: string): Promise<Block[]> {
     id: row.id,
     blockerId: row.blocker_id,
     blockedId: row.blocked_id,
+    blockedDisplayName: row.blocked_display_name,
     createdAt: row.created_at,
   }));
 }

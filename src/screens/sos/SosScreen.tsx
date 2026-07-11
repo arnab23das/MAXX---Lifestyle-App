@@ -10,8 +10,16 @@ import { getCrisisResourcesForRegion } from '@/content/crisisResources';
 import { BreathingTimer } from '@/components/BreathingTimer';
 import { useAuthStore } from '@/store/authStore';
 import { useAppStore } from '@/store/appStore';
-import { EmergencyContact } from '@/types/domain';
-import { getMyEmergencyContacts, addEmergencyContact, createSosBroadcast } from '@/api/sos';
+import { EmergencyContact, SosBroadcast } from '@/types/domain';
+import {
+  getMyEmergencyContacts,
+  addEmergencyContact,
+  removeEmergencyContact,
+  createSosBroadcast,
+  deactivateSosBroadcast,
+  getOtherActiveLocalBroadcasts,
+  sendBroadcastReply,
+} from '@/api/sos';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Sos'>;
 
@@ -32,7 +40,10 @@ export function SosScreen({ navigation }: Props) {
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [broadcasting, setBroadcasting] = useState(false);
-  const [broadcastSent, setBroadcastSent] = useState(false);
+  const [myBroadcast, setMyBroadcast] = useState<SosBroadcast | null>(null);
+  const [nearby, setNearby] = useState<(SosBroadcast & { authorDisplayName: string })[]>([]);
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [sendingReplyTo, setSendingReplyTo] = useState<string | null>(null);
 
   useEffect(() => {
     if (session?.user) {
@@ -40,12 +51,28 @@ export function SosScreen({ navigation }: Props) {
     }
   }, [session?.user]);
 
+  useEffect(() => {
+    if (session?.user && profile?.region) {
+      getOtherActiveLocalBroadcasts(profile.region, session.user.id).then(setNearby).catch(() => {});
+    }
+  }, [session?.user, profile?.region]);
+
   async function handleAddContact() {
     if (!session?.user || !newName.trim() || !newPhone.trim()) return;
     const created = await addEmergencyContact(session.user.id, newName.trim(), newPhone.trim());
     setContacts((prev) => [...prev, { id: created.id, userId: created.user_id, name: created.name, phone: created.phone, relationship: created.relationship }]);
     setNewName('');
     setNewPhone('');
+  }
+
+  async function handleRemoveContact(id: string) {
+    setContacts((prev) => prev.filter((c) => c.id !== id));
+    try {
+      await removeEmergencyContact(id);
+    } catch {
+      // reload from server if the delete failed, so state doesn't drift
+      if (session?.user) getMyEmergencyContacts(session.user.id).then(setContacts).catch(() => {});
+    }
   }
 
   async function handleBroadcast() {
@@ -56,12 +83,44 @@ export function SosScreen({ navigation }: Props) {
     }
     setBroadcasting(true);
     try {
-      await createSosBroadcast(session.user.id, profile.region, 'I could use some support right now.');
-      setBroadcastSent(true);
+      const broadcast = await createSosBroadcast(
+        session.user.id,
+        profile.displayName,
+        profile.region,
+        'I could use some support right now.'
+      );
+      setMyBroadcast(broadcast);
     } catch (err: any) {
       Alert.alert('Couldn’t send', err.message ?? 'Please try again.');
     } finally {
       setBroadcasting(false);
+    }
+  }
+
+  async function handleCancelBroadcast() {
+    if (!myBroadcast) return;
+    const id = myBroadcast.id;
+    setMyBroadcast(null);
+    try {
+      await deactivateSosBroadcast(id);
+    } catch {
+      // non-critical if this fails silently; broadcast will age out on its own
+    }
+  }
+
+  async function handleSendReply(broadcast: SosBroadcast) {
+    if (!session?.user) return;
+    const message = (replyDrafts[broadcast.id] ?? 'Sending you strength 💛 you’ve got this.').trim();
+    if (!message) return;
+    setSendingReplyTo(broadcast.id);
+    try {
+      await sendBroadcastReply(broadcast.id, session.user.id, profile?.displayName ?? 'A MAXX user', message);
+      setNearby((prev) => prev.filter((b) => b.id !== broadcast.id));
+      setReplyDrafts((prev) => ({ ...prev, [broadcast.id]: '' }));
+    } catch (err: any) {
+      Alert.alert('Couldn’t send', err.message ?? 'Please try again.');
+    } finally {
+      setSendingReplyTo(null);
     }
   }
 
@@ -126,10 +185,15 @@ export function SosScreen({ navigation }: Props) {
       </Text>
       <View style={{ gap: 8 }}>
         {contacts.map((c) => (
-          <Pressable key={c.id} onPress={() => callNumber(c.phone)} style={[styles.contactRow, { borderColor: theme.colors.border }]}>
-            <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>{c.name}</Text>
-            <Text style={{ color: theme.colors.primary }}>Call {c.phone}</Text>
-          </Pressable>
+          <View key={c.id} style={[styles.contactRow, { borderColor: theme.colors.border }]}>
+            <Pressable onPress={() => callNumber(c.phone)} style={{ flex: 1 }}>
+              <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>{c.name}</Text>
+              <Text style={{ color: theme.colors.primary }}>Call {c.phone}</Text>
+            </Pressable>
+            <Pressable onPress={() => handleRemoveContact(c.id)} hitSlop={10}>
+              <Text style={{ color: theme.colors.textSecondary }}>Remove</Text>
+            </Pressable>
+          </View>
         ))}
         {contacts.length === 0 && (
           <Text style={{ color: theme.colors.textSecondary }}>You haven’t added any emergency contacts yet.</Text>
@@ -165,13 +229,44 @@ export function SosScreen({ navigation }: Props) {
       <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginBottom: 12 }]}>
         This is a peer support option, not a replacement for the resources above — a peer may not respond right away.
       </Text>
-      <Button
-        label={broadcastSent ? 'Support request sent' : 'I need support — notify my local community'}
-        onPress={handleBroadcast}
-        loading={broadcasting}
-        disabled={broadcastSent}
-        variant="secondary"
-      />
+      {myBroadcast ? (
+        <View style={{ gap: 8 }}>
+          <Text style={{ color: theme.colors.textSecondary }}>Your local community has been notified.</Text>
+          <Button label="Cancel request" onPress={handleCancelBroadcast} variant="ghost" />
+        </View>
+      ) : (
+        <Button label="I need support — notify my local community" onPress={handleBroadcast} loading={broadcasting} variant="secondary" />
+      )}
+
+      {nearby.length > 0 && (
+        <View style={{ marginTop: 28 }}>
+          <Text style={[theme.typography.h2, { color: theme.colors.textPrimary, marginBottom: 4 }]}>Nearby, right now</Text>
+          <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginBottom: 12 }]}>
+            Others in your community could use a word of support.
+          </Text>
+          <View style={{ gap: 10 }}>
+            {nearby.map((broadcast) => (
+              <View key={broadcast.id} style={[styles.exerciseRow, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+                <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{broadcast.authorDisplayName} needs support</Text>
+                <TextInput
+                  value={replyDrafts[broadcast.id] ?? ''}
+                  onChangeText={(text) => setReplyDrafts((prev) => ({ ...prev, [broadcast.id]: text }))}
+                  placeholder="Sending you strength 💛 you've got this."
+                  placeholderTextColor={theme.colors.textSecondary}
+                  style={[styles.smallInput, { borderColor: theme.colors.border, color: theme.colors.textPrimary, marginTop: 8 }]}
+                />
+                <Button
+                  label="Send support"
+                  onPress={() => handleSendReply(broadcast)}
+                  loading={sendingReplyTo === broadcast.id}
+                  variant="ghost"
+                  style={{ marginTop: 8 }}
+                />
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
     </ScreenContainer>
   );
 }

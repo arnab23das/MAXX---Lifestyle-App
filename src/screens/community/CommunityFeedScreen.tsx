@@ -108,7 +108,7 @@ export function CommunityFeedScreen() {
         text: `Block ${post.authorDisplayName}`,
         style: 'destructive',
         onPress: async () => {
-          await blockUser(session!.user.id, post.authorId);
+          await blockUser(session!.user.id, post.authorId, post.authorDisplayName);
           load();
         },
       });
