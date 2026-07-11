@@ -7,6 +7,9 @@ import { getGamificationState, saveGamificationState } from '@/api/gamification'
 import { ADDICTION_CATEGORIES, getLevelsForCategory, generatePath, getAllLevelsById } from '@/content';
 import { applyActiveDay, maybeAwardStreakFreeze, todayDateString } from '@/utils/gamification';
 import { syncWidgetData } from '@/widgets/widgetData';
+import { TERMS_VERSION } from '@/content/legal';
+
+export const DEMO_USER_ID = 'demo-user';
 
 interface AppState {
   loading: boolean;
@@ -16,6 +19,7 @@ interface AppState {
   categories: HabitCategory[]; // fixed + this user's custom categories
   path: GeneratedPath | null;
   levelsById: Map<string, Level>;
+  isDemo: boolean;
 
   loadForUser: (userId: string) => Promise<void>;
   reset: () => void;
@@ -25,6 +29,14 @@ interface AppState {
   setRegion: (userId: string, region: string) => Promise<void>;
 
   completeLevel: (userId: string, levelId: string) => Promise<{ xpGained: number; creditsGained: number; usedFreeze: boolean }>;
+
+  /**
+   * Bypasses Supabase entirely and drops the app into the real level path
+   * with in-memory-only fake data — for previewing the app without a
+   * working backend. Nothing here is persisted anywhere.
+   */
+  enterDemoMode: () => void;
+  exitDemoMode: () => void;
 }
 
 function firstUnlockedOrNextIndex(path: GeneratedPath, progress: Record<string, LevelProgress>): number {
@@ -43,8 +55,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   categories: ADDICTION_CATEGORIES,
   path: null,
   levelsById: getAllLevelsById(),
+  isDemo: false,
 
-  reset: () => set({ profile: null, progress: {}, gamification: null, path: null, loading: false }),
+  reset: () => set({ profile: null, progress: {}, gamification: null, path: null, loading: false, isDemo: false }),
 
   loadForUser: async (userId: string) => {
     set({ loading: true });
@@ -98,6 +111,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setRegion: async (userId, region) => {
+    if (get().isDemo) {
+      set((s) => (s.profile ? { profile: { ...s.profile, region } } : s));
+      return;
+    }
     await updateMyProfile(userId, { region });
     set((s) => (s.profile ? { profile: { ...s.profile, region } } : s));
   },
@@ -105,15 +122,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   completeLevel: async (userId, levelId) => {
     const level = get().levelsById.get(levelId);
     if (!level) throw new Error(`Unknown level: ${levelId}`);
+    const isDemo = get().isDemo;
 
     const prior = get().progress[levelId];
-    await upsertProgress(userId, levelId, {
-      status: 'completed',
-      completedAt: new Date().toISOString(),
-      attempts: (prior?.attempts ?? 0) + 1,
-    });
+    if (!isDemo) {
+      await upsertProgress(userId, levelId, {
+        status: 'completed',
+        completedAt: new Date().toISOString(),
+        attempts: (prior?.attempts ?? 0) + 1,
+      });
+    }
 
-    const gamification = get().gamification ?? (await getGamificationState(userId));
+    const gamification = get().gamification ?? (isDemo ? null : await getGamificationState(userId));
+    if (!gamification) throw new Error('No gamification state available.');
     const today = todayDateString();
     const streakResult = applyActiveDay(gamification, today);
     const streakFreezesAvailable = maybeAwardStreakFreeze(streakResult.currentStreak, streakResult.streakFreezesAvailable);
@@ -128,7 +149,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       streakFreezesAvailable,
       streakFreezesUsedTotal: streakResult.streakFreezesUsedTotal,
     };
-    await saveGamificationState(nextState);
+    if (!isDemo) {
+      await saveGamificationState(nextState);
+    }
 
     set((s) => ({
       progress: {
@@ -140,6 +163,46 @@ export const useAppStore = create<AppState>((set, get) => ({
     syncWidgetData(nextState);
 
     return { xpGained: level.xpReward, creditsGained: level.creditReward, usedFreeze: streakResult.usedFreeze };
+  },
+
+  enterDemoMode: () => {
+    const categories = ADDICTION_CATEGORIES.filter((c) => !c.isCustom).slice(0, 2);
+    const path = generatePath('addictions', categories);
+    const profile: UserProfile = {
+      id: DEMO_USER_ID,
+      email: null,
+      displayName: 'Demo User',
+      createdAt: new Date().toISOString(),
+      selectedTrackId: 'addictions',
+      selectedCategoryIds: categories.map((c) => c.id),
+      region: 'US - Northeast',
+      acceptedTermsAt: new Date().toISOString(),
+      acceptedTermsVersion: TERMS_VERSION,
+      notificationsEnabled: false,
+    };
+    const gamification: GamificationState = {
+      userId: DEMO_USER_ID,
+      xp: 0,
+      credits: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      lastActiveDate: null,
+      streakFreezesAvailable: 1,
+      streakFreezesUsedTotal: 0,
+    };
+    set({
+      isDemo: true,
+      profile,
+      gamification,
+      progress: {},
+      categories: ADDICTION_CATEGORIES,
+      path,
+      loading: false,
+    });
+  },
+
+  exitDemoMode: () => {
+    set({ isDemo: false, profile: null, progress: {}, gamification: null, path: null });
   },
 }));
 

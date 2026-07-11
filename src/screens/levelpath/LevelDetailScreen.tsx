@@ -4,7 +4,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { useTheme } from '@/theme';
 import { RootStackParamList } from '@/navigation/types';
-import { useAppStore } from '@/store/appStore';
+import { useAppStore, DEMO_USER_ID } from '@/store/appStore';
 import { useAuthStore } from '@/store/authStore';
 import { LessonLevelScreen } from './LessonLevelScreen';
 import { ExerciseLevelScreen } from './ExerciseLevelScreen';
@@ -18,6 +18,7 @@ export function LevelDetailScreen({ route, navigation }: Props) {
   const { levelId } = route.params;
   const level = useAppStore((s) => s.levelsById.get(levelId));
   const completeLevel = useAppStore((s) => s.completeLevel);
+  const isDemo = useAppStore((s) => s.isDemo);
   const session = useAuthStore((s) => s.session);
 
   const [result, setResult] = useState<{ xpGained: number; creditsGained: number; usedFreeze: boolean } | null>(null);
@@ -31,8 +32,9 @@ export function LevelDetailScreen({ route, navigation }: Props) {
   }
 
   async function handleFinish() {
-    if (!session?.user) return;
-    const outcome = await completeLevel(session.user.id, level!.id);
+    const userId = isDemo ? DEMO_USER_ID : session?.user?.id;
+    if (!userId) return;
+    const outcome = await completeLevel(userId, level!.id);
     setResult(outcome);
   }
 

@@ -30,6 +30,7 @@ export function RootNavigator() {
   const reset = useAppStore((s) => s.reset);
   const profile = useAppStore((s) => s.profile);
   const appLoading = useAppStore((s) => s.loading);
+  const isDemo = useAppStore((s) => s.isDemo);
   const loadedUserId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export function RootNavigator() {
   }, [init]);
 
   useEffect(() => {
+    if (isDemo) return;
     if (session?.user) {
       if (loadedUserId.current !== session.user.id) {
         loadedUserId.current = session.user.id;
@@ -47,14 +49,15 @@ export function RootNavigator() {
       loadedUserId.current = null;
       reset();
     }
-  }, [session?.user, loadForUser, reset]);
+  }, [session?.user, loadForUser, reset, isDemo]);
 
   useEffect(() => {
-    if (profile) syncDailyReminder(profile.notificationsEnabled);
-  }, [profile?.notificationsEnabled]);
+    if (profile && !isDemo) syncDailyReminder(profile.notificationsEnabled);
+  }, [profile?.notificationsEnabled, isDemo]);
 
-  const onboarded = !!profile?.selectedTrackId && profile.selectedCategoryIds.length > 0 && !!profile.acceptedTermsAt;
-  const showSplash = initializing || (!!session && appLoading && !profile);
+  const onboarded = isDemo || (!!profile?.selectedTrackId && profile.selectedCategoryIds.length > 0 && !!profile.acceptedTermsAt);
+  const showSplash = !isDemo && (initializing || (!!session && appLoading && !profile));
+  const showOnboarding = !isDemo && (!session || !onboarded);
 
   const navigationTheme = {
     ...DarkTheme,
@@ -73,7 +76,7 @@ export function RootNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false, ...themedHeaderOptions(theme) }}>
         {showSplash ? (
           <Stack.Screen name="Splash" component={SplashScreen} />
-        ) : !session || !onboarded ? (
+        ) : showOnboarding ? (
           <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
         ) : (
           <>

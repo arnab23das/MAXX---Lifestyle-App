@@ -32,6 +32,7 @@ export function SosScreen({ navigation }: Props) {
   const theme = useTheme();
   const session = useAuthStore((s) => s.session);
   const profile = useAppStore((s) => s.profile);
+  const isDemo = useAppStore((s) => s.isDemo);
   const affirmation = useMemo(() => SOS_AFFIRMATIONS[Math.floor(Math.random() * SOS_AFFIRMATIONS.length)], []);
   const crisisResources = useMemo(() => getCrisisResourcesForRegion(profile?.region ?? null), [profile?.region]);
 
@@ -58,7 +59,14 @@ export function SosScreen({ navigation }: Props) {
   }, [session?.user, profile?.region]);
 
   async function handleAddContact() {
-    if (!session?.user || !newName.trim() || !newPhone.trim()) return;
+    if (!newName.trim() || !newPhone.trim()) return;
+    if (isDemo) {
+      setContacts((prev) => [...prev, { id: `demo-${Date.now()}`, userId: 'demo-user', name: newName.trim(), phone: newPhone.trim(), relationship: null }]);
+      setNewName('');
+      setNewPhone('');
+      return;
+    }
+    if (!session?.user) return;
     const created = await addEmergencyContact(session.user.id, newName.trim(), newPhone.trim());
     setContacts((prev) => [...prev, { id: created.id, userId: created.user_id, name: created.name, phone: created.phone, relationship: created.relationship }]);
     setNewName('');
@@ -67,6 +75,7 @@ export function SosScreen({ navigation }: Props) {
 
   async function handleRemoveContact(id: string) {
     setContacts((prev) => prev.filter((c) => c.id !== id));
+    if (isDemo) return;
     try {
       await removeEmergencyContact(id);
     } catch {
@@ -76,11 +85,15 @@ export function SosScreen({ navigation }: Props) {
   }
 
   async function handleBroadcast() {
-    if (!session?.user) return;
     if (!profile?.region) {
       Alert.alert('Set your region first', 'Local broadcast needs a region set in Community settings.');
       return;
     }
+    if (isDemo) {
+      setMyBroadcast({ id: 'demo-broadcast', userId: 'demo-user', region: profile.region, createdAt: new Date().toISOString(), message: null, active: true });
+      return;
+    }
+    if (!session?.user) return;
     setBroadcasting(true);
     try {
       const broadcast = await createSosBroadcast(
@@ -101,6 +114,7 @@ export function SosScreen({ navigation }: Props) {
     if (!myBroadcast) return;
     const id = myBroadcast.id;
     setMyBroadcast(null);
+    if (isDemo) return;
     try {
       await deactivateSosBroadcast(id);
     } catch {

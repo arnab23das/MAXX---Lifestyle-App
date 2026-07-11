@@ -28,8 +28,14 @@ export function SettingsScreen() {
   const navigation = useNavigation<Nav>();
   const session = useAuthStore((s) => s.session);
   const profile = useAppStore((s) => s.profile);
+  const isDemo = useAppStore((s) => s.isDemo);
+  const exitDemoMode = useAppStore((s) => s.exitDemoMode);
 
   async function toggleNotifications(value: boolean) {
+    if (isDemo) {
+      useAppStore.setState((s) => (s.profile ? { profile: { ...s.profile, notificationsEnabled: value } } : s));
+      return;
+    }
     if (!session?.user) return;
     await updateMyProfile(session.user.id, { notificationsEnabled: value });
     useAppStore.setState((s) => (s.profile ? { profile: { ...s.profile, notificationsEnabled: value } } : s));
@@ -39,6 +45,14 @@ export function SettingsScreen() {
     <ScreenContainer scroll>
       <Text style={[theme.typography.display, { color: theme.colors.textPrimary, marginBottom: 20 }]}>Settings</Text>
 
+      {isDemo && (
+        <View style={[styles.demoBanner, { backgroundColor: theme.colors.primarySoft, borderColor: theme.colors.primary }]}>
+          <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>
+            You're in demo mode. Nothing here is saved — Community and SOS features that need a real account won't work.
+          </Text>
+        </View>
+      )}
+
       <View style={[styles.row, { borderColor: theme.colors.border }]}>
         <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>Daily streak reminders</Text>
         <Switch value={profile?.notificationsEnabled ?? true} onValueChange={toggleNotifications} />
@@ -46,7 +60,7 @@ export function SettingsScreen() {
 
       <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginTop: 20, marginBottom: 8 }]}>COMMUNITY</Text>
       <Row label={`Region: ${profile?.region ?? 'Not set'}`} onPress={() => navigation.navigate('RegionPicker')} />
-      <Row label="Blocked users" onPress={() => navigation.navigate('BlockedUsers')} />
+      {!isDemo && <Row label="Blocked users" onPress={() => navigation.navigate('BlockedUsers')} />}
 
       <Text style={[theme.typography.caption, { color: theme.colors.textSecondary, marginTop: 20, marginBottom: 8 }]}>ON YOUR HOME SCREEN</Text>
       <Row label="Widgets" onPress={() => navigation.navigate('WidgetInfo')} />
@@ -56,8 +70,14 @@ export function SettingsScreen() {
       <Row label="Terms of Use" onPress={() => navigation.navigate('Terms')} />
 
       <View style={{ marginTop: 32, gap: 12 }}>
-        <Button label="Sign out" onPress={() => signOut()} variant="secondary" />
-        <Row label="Delete account" onPress={() => navigation.navigate('AccountDeletion')} danger />
+        {isDemo ? (
+          <Button label="Exit demo mode" onPress={exitDemoMode} variant="secondary" />
+        ) : (
+          <>
+            <Button label="Sign out" onPress={() => signOut()} variant="secondary" />
+            <Row label="Delete account" onPress={() => navigation.navigate('AccountDeletion')} danger />
+          </>
+        )}
       </View>
     </ScreenContainer>
   );
@@ -65,4 +85,5 @@ export function SettingsScreen() {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1 },
+  demoBanner: { borderWidth: 1.5, borderRadius: 14, padding: 14, marginBottom: 20 },
 });

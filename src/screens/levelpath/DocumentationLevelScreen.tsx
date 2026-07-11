@@ -38,6 +38,7 @@ export function DocumentationLevelScreen({ level, onFinish }: Props) {
   const content = level.content as DocumentationContent;
   const session = useAuthStore((s) => s.session);
   const profile = useAppStore((s) => s.profile);
+  const isDemo = useAppStore((s) => s.isDemo);
 
   const [mood, setMood] = useState<number | null>(null);
   const [craving, setCraving] = useState<number | null>(null);
@@ -62,7 +63,6 @@ export function DocumentationLevelScreen({ level, onFinish }: Props) {
   }
 
   async function handleSave() {
-    if (!session?.user) return;
     setError(null);
 
     if (shareToCommunity) {
@@ -73,6 +73,13 @@ export function DocumentationLevelScreen({ level, onFinish }: Props) {
       }
     }
 
+    if (isDemo) {
+      // Nothing to persist without a real account — just advance.
+      onFinish();
+      return;
+    }
+
+    if (!session?.user) return;
     setSaving(true);
     try {
       const entry = await createJournalEntry(session.user.id, {

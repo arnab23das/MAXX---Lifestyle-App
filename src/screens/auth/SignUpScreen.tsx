@@ -30,6 +30,7 @@ export function SignUpScreen({ route, navigation }: Props) {
   const [appleAvailable, setAppleAvailable] = useState(false);
   const selectTrackAndCategories = useAppStore((s) => s.selectTrackAndCategories);
   const acceptTerms = useAppStore((s) => s.acceptTerms);
+  const enterDemoMode = useAppStore((s) => s.enterDemoMode);
   const [googleRequest, , promptGoogleSignIn] = useGoogleSignInRequest();
 
   React.useEffect(() => {
@@ -187,6 +188,8 @@ export function SignUpScreen({ route, navigation }: Props) {
         variant="ghost"
         style={{ marginTop: 16 }}
       />
+
+      <Button label="Trouble signing up? View demo instead" onPress={enterDemoMode} variant="ghost" style={{ marginTop: 4 }} />
     </ScreenContainer>
   );
 }

@@ -7,12 +7,14 @@ import { CategoryIcon } from '@/components/CategoryIcon';
 import { useTheme } from '@/theme';
 import { TRACKS } from '@/content';
 import { OnboardingStackParamList } from '@/navigation/types';
+import { useAppStore } from '@/store/appStore';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'GoalSelection'>;
 
 /** First interactive screen, shown before sign-up (spec §3.2). */
 export function GoalSelectionScreen({ navigation }: Props) {
   const theme = useTheme();
+  const enterDemoMode = useAppStore((s) => s.enterDemoMode);
 
   return (
     <ScreenContainer scroll>
@@ -55,6 +57,12 @@ export function GoalSelectionScreen({ navigation }: Props) {
           </Pressable>
         ))}
       </View>
+
+      <Pressable onPress={enterDemoMode} style={styles.demoLink}>
+        <Text style={{ color: theme.colors.textSecondary, textDecorationLine: 'underline' }}>
+          Just want to look around? View demo
+        </Text>
+      </Pressable>
     </ScreenContainer>
   );
 }
@@ -63,4 +71,5 @@ const styles = StyleSheet.create({
   card: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 18, borderWidth: 2, padding: 18 },
   iconTile: { width: 52, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   radioRing: { width: 24, height: 24, borderRadius: 12, borderWidth: 2 },
+  demoLink: { marginTop: 24, alignItems: 'center' },
 });
