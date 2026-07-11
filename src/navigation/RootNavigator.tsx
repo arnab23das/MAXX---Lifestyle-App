@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
 import { useAuthStore } from '@/store/authStore';
@@ -16,10 +16,13 @@ import { BlockedUsersScreen } from '@/screens/community/BlockedUsersScreen';
 import { RegionPickerScreen } from '@/screens/community/RegionPickerScreen';
 import { WidgetInfoScreen } from '@/screens/widgets/WidgetInfoScreen';
 import { syncDailyReminder } from '@/utils/notifications';
+import { useTheme } from '@/theme';
+import { themedHeaderOptions } from './screenOptions';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
+  const theme = useTheme();
   const init = useAuthStore((s) => s.init);
   const session = useAuthStore((s) => s.session);
   const initializing = useAuthStore((s) => s.initializing);
@@ -53,9 +56,21 @@ export function RootNavigator() {
   const onboarded = !!profile?.selectedTrackId && profile.selectedCategoryIds.length > 0 && !!profile.acceptedTermsAt;
   const showSplash = initializing || (!!session && appLoading && !profile);
 
+  const navigationTheme = {
+    ...DarkTheme,
+    colors: {
+      ...DarkTheme.colors,
+      background: theme.colors.background,
+      card: theme.colors.background,
+      text: theme.colors.textPrimary,
+      border: theme.colors.border,
+      primary: theme.colors.primary,
+    },
+  };
+
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <NavigationContainer theme={navigationTheme}>
+      <Stack.Navigator screenOptions={{ headerShown: false, ...themedHeaderOptions(theme) }}>
         {showSplash ? (
           <Stack.Screen name="Splash" component={SplashScreen} />
         ) : !session || !onboarded ? (
