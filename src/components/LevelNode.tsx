@@ -66,6 +66,23 @@ function PulseRing({ size, color }: { size: number; color: string }) {
   );
 }
 
+/** Gentle up-and-down bob for the current node, echoing the reference's floating "START" bubble. */
+function useBob(enabled: boolean) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!enabled) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0, duration: 800, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [anim, enabled]);
+  return anim.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
+}
+
 export function LevelNode({ type, title, status, onPress, isCurrent }: Props) {
   const theme = useTheme();
   const meta = TYPE_META[type];
@@ -75,9 +92,23 @@ export function LevelNode({ type, title, status, onPress, isCurrent }: Props) {
   const rotate = meta.shape === 'diamond' ? '45deg' : '0deg';
   const Icon = meta.Icon;
 
+  const press = useRef(new Animated.Value(0)).current;
+  const bob = useBob(!!isCurrent && status !== 'locked');
+
+  function handlePressIn() {
+    if (status === 'locked') return;
+    Animated.timing(press, { toValue: 1, duration: 90, useNativeDriver: true }).start();
+  }
+  function handlePressOut() {
+    Animated.spring(press, { toValue: 0, useNativeDriver: true, speed: 20, bounciness: 10 }).start();
+  }
+
+  const translateY = press.interpolate({ inputRange: [0, 1], outputRange: [0, theme.lip.heightLarge * 0.6] });
+  const scale = press.interpolate({ inputRange: [0, 1], outputRange: [1, 0.94] });
+
   return (
     <View style={styles.column}>
-      <View style={{ width: size, height: size + theme.lip.heightLarge, alignItems: 'center' }}>
+      <Animated.View style={{ width: size, height: size + theme.lip.heightLarge, alignItems: 'center', transform: [{ translateY: bob }] }}>
         {isCurrent && status !== 'locked' && <PulseRing size={size} color={theme.colors.primary} />}
 
         {/* Lip: same silhouette, offset down, peeking out from behind the front shape. */}
@@ -97,32 +128,36 @@ export function LevelNode({ type, title, status, onPress, isCurrent }: Props) {
 
         <Pressable
           onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
           disabled={status === 'locked'}
           accessibilityRole="button"
           accessibilityLabel={`${meta.label}: ${title}${status === 'locked' ? ', locked' : status === 'completed' ? ', completed' : ''}`}
-          style={({ pressed }) => [
-            styles.frontShape,
-            {
-              width: size,
-              height: size,
-              borderRadius: shapeRadius,
-              backgroundColor: bg,
-              top: pressed ? theme.lip.heightLarge * 0.6 : 0,
-              transform: [{ rotate }],
-            },
-          ]}
         >
-          <View style={{ transform: [{ rotate: meta.shape === 'diamond' ? '-45deg' : '0deg' }] }}>
-            {status === 'completed' ? (
-              <Check size={26} color={fg} weight="bold" />
-            ) : status === 'locked' ? (
-              <LockSimple size={24} color={fg} weight="fill" />
-            ) : (
-              <Icon size={26} color={fg} weight="fill" />
-            )}
-          </View>
+          <Animated.View
+            style={[
+              styles.frontShape,
+              {
+                width: size,
+                height: size,
+                borderRadius: shapeRadius,
+                backgroundColor: bg,
+                transform: [{ rotate }, { translateY }, { scale }],
+              },
+            ]}
+          >
+            <View style={{ transform: [{ rotate: meta.shape === 'diamond' ? '-45deg' : '0deg' }] }}>
+              {status === 'completed' ? (
+                <Check size={26} color={fg} weight="bold" />
+              ) : status === 'locked' ? (
+                <LockSimple size={24} color={fg} weight="fill" />
+              ) : (
+                <Icon size={26} color={fg} weight="fill" />
+              )}
+            </View>
+          </Animated.View>
         </Pressable>
-      </View>
+      </Animated.View>
       <Text numberOfLines={2} style={[styles.title, { color: theme.colors.textPrimary, fontFamily: theme.fontFamily.semibold }]}>
         {title}
       </Text>

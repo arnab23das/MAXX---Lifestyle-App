@@ -4,6 +4,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { Button } from '@/components/Button';
+import { AnimatedPressable } from '@/components/AnimatedPressable';
+import { FadeSlideIn } from '@/components/FadeSlideIn';
 import { useTheme } from '@/theme';
 import { CommunityPost } from '@/types/domain';
 import { getGlobalFeed, getLocalFeed, createPost, sendAffirmation, deletePost, reportContent, blockUser } from '@/api/community';
@@ -122,7 +124,7 @@ export function CommunityFeedScreen() {
       <View style={styles.header}>
         <View style={[styles.scopeToggle, { backgroundColor: theme.colors.surface }]}>
           {(['global', 'local'] as Scope[]).map((s) => (
-            <Pressable
+            <AnimatedPressable
               key={s}
               onPress={() => setScope(s)}
               style={[styles.scopeButton, scope === s && { backgroundColor: theme.colors.primary }]}
@@ -130,7 +132,7 @@ export function CommunityFeedScreen() {
               <Text style={{ color: scope === s ? theme.colors.onPrimary : theme.colors.textPrimary, fontWeight: '700' }}>
                 {s === 'global' ? 'Global' : 'Local'}
               </Text>
-            </Pressable>
+            </AnimatedPressable>
           ))}
         </View>
         {scope === 'local' && !profile?.region && (
@@ -164,22 +166,24 @@ export function CommunityFeedScreen() {
             </Text>
           ) : null
         }
-        renderItem={({ item }) => (
-          <View style={[styles.postCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-            <View style={styles.postHeader}>
-              <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{item.authorDisplayName}</Text>
-              <Pressable onPress={() => handleMore(item)} hitSlop={10}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 18 }}>⋯</Text>
-              </Pressable>
+        renderItem={({ item, index }) => (
+          <FadeSlideIn index={Math.min(index, 8)}>
+            <View style={[styles.postCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+              <View style={styles.postHeader}>
+                <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>{item.authorDisplayName}</Text>
+                <Pressable onPress={() => handleMore(item)} hitSlop={10}>
+                  <Text style={{ color: theme.colors.textSecondary, fontSize: 18 }}>⋯</Text>
+                </Pressable>
+              </View>
+              <Text style={[theme.typography.body, { color: theme.colors.textPrimary, marginTop: 6 }]}>{item.text}</Text>
+              <AnimatedPressable onPress={() => handleAffirm(item)} style={styles.affirmRow} scaleTo={1.15}>
+                <Text style={{ fontSize: 16 }}>💛</Text>
+                <Text style={{ color: theme.colors.textSecondary, fontWeight: '600' }}>
+                  {item.affirmationCount > 0 ? item.affirmationCount : ''} Affirm
+                </Text>
+              </AnimatedPressable>
             </View>
-            <Text style={[theme.typography.body, { color: theme.colors.textPrimary, marginTop: 6 }]}>{item.text}</Text>
-            <Pressable onPress={() => handleAffirm(item)} style={styles.affirmRow}>
-              <Text style={{ fontSize: 16 }}>💛</Text>
-              <Text style={{ color: theme.colors.textSecondary, fontWeight: '600' }}>
-                {item.affirmationCount > 0 ? item.affirmationCount : ''} Affirm
-              </Text>
-            </Pressable>
-          </View>
+          </FadeSlideIn>
         )}
       />
     </ScreenContainer>
@@ -190,10 +194,10 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
   scopeToggle: { flexDirection: 'row', borderRadius: 999, padding: 4 },
   scopeButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999 },
-  composer: { marginHorizontal: 16, marginBottom: 12, borderWidth: 1.5, borderRadius: 16, padding: 12, gap: 10 },
+  composer: { marginHorizontal: 16, marginBottom: 12, borderWidth: 1, borderRadius: 18, padding: 12, gap: 10 },
   composerInput: { minHeight: 44, fontSize: 15 },
   list: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
-  postCard: { borderWidth: 1, borderRadius: 16, padding: 14 },
+  postCard: { borderWidth: 1, borderRadius: 18, padding: 16 },
   postHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   affirmRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
 });

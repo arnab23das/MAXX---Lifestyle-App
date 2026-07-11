@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTheme } from '@/theme';
 import { Level, DocumentationContent } from '@/types/content';
 import { Button } from '@/components/Button';
 import { Checkbox } from '@/components/Checkbox';
 import { ScreenContainer } from '@/components/ScreenContainer';
+import { AnimatedPressable } from '@/components/AnimatedPressable';
+import { FadeSlideIn } from '@/components/FadeSlideIn';
 import { createJournalEntry } from '@/api/journal';
 import { createPost } from '@/api/community';
 import { checkPostText } from '@/utils/contentFilter';
@@ -21,13 +23,14 @@ function ScalePicker({ value, onChange, color }: { value: number | null; onChang
   return (
     <View style={styles.scaleRow}>
       {[1, 2, 3, 4, 5].map((n) => (
-        <Pressable
+        <AnimatedPressable
           key={n}
           onPress={() => onChange(n)}
+          scaleTo={1.15}
           style={[styles.scaleDot, { borderColor: color, backgroundColor: value === n ? color : 'transparent' }]}
         >
           <Text style={{ color: value === n ? theme.colors.onPrimary : color, fontWeight: '700' }}>{n}</Text>
-        </Pressable>
+        </AnimatedPressable>
       ))}
     </View>
   );
@@ -135,7 +138,7 @@ export function DocumentationLevelScreen({ level, onFinish }: Props) {
             {winsPrompt.options.map((opt) => {
               const selected = wins.has(opt);
               return (
-                <Pressable
+                <AnimatedPressable
                   key={opt}
                   onPress={() => toggleWin(opt)}
                   style={[
@@ -144,7 +147,7 @@ export function DocumentationLevelScreen({ level, onFinish }: Props) {
                   ]}
                 >
                   <Text style={{ color: theme.colors.textPrimary, fontSize: 13 }}>{opt}</Text>
-                </Pressable>
+                </AnimatedPressable>
               );
             })}
           </View>

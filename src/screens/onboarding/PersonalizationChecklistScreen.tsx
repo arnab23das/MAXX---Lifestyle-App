@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { CheckSquare } from 'phosphor-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { Button } from '@/components/Button';
 import { CategoryIcon } from '@/components/CategoryIcon';
+import { AnimatedPressable } from '@/components/AnimatedPressable';
+import { FadeSlideIn } from '@/components/FadeSlideIn';
 import { useTheme } from '@/theme';
 import { getCategoriesForTrack } from '@/content';
 import { OnboardingStackParamList } from '@/navigation/types';
@@ -52,19 +54,18 @@ export function PersonalizationChecklistScreen({ route, navigation }: Props) {
         Pick as many as apply. We’ll build your path around them.
       </Text>
 
-      <View style={{ gap: 12 }}>
-        {categories.map((category) => {
+      <View style={{ gap: 10 }}>
+        {categories.map((category, i) => {
           const isSelected = selected.has(category.id);
           return (
-            <View key={category.id}>
-              <Pressable
+            <FadeSlideIn key={category.id} index={i}>
+              <AnimatedPressable
                 onPress={() => toggle(category.id)}
-                style={({ pressed }) => [
+                style={[
                   styles.row,
                   {
                     backgroundColor: isSelected ? theme.colors.primarySoft : theme.colors.surface,
-                    borderColor: isSelected ? theme.colors.primary : theme.colors.border,
-                    opacity: pressed ? 0.9 : 1,
+                    borderColor: isSelected ? theme.colors.primary : 'transparent',
                   },
                 ]}
                 accessibilityRole="checkbox"
@@ -86,7 +87,7 @@ export function PersonalizationChecklistScreen({ route, navigation }: Props) {
                 ) : (
                   <View style={[styles.checkbox, { borderColor: theme.colors.border }]} />
                 )}
-              </Pressable>
+              </AnimatedPressable>
               {category.isCustom && isSelected && (
                 <TextInput
                   value={customText}
@@ -99,7 +100,7 @@ export function PersonalizationChecklistScreen({ route, navigation }: Props) {
                   ]}
                 />
               )}
-            </View>
+            </FadeSlideIn>
           );
         })}
       </View>
@@ -112,8 +113,8 @@ export function PersonalizationChecklistScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, borderWidth: 2, padding: 14 },
-  iconTile: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, borderWidth: 2, padding: 14 },
+  iconTile: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2 },
   input: { marginTop: 8, borderWidth: 1.5, borderRadius: 12, padding: 12, fontSize: 15 },
 });

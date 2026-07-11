@@ -1,9 +1,10 @@
 import React from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { StyleSheet, Switch, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { Button } from '@/components/Button';
+import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { useTheme } from '@/theme';
 import { RootStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/store/authStore';
@@ -16,10 +17,10 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 function Row({ label, onPress, danger }: { label: string; onPress: () => void; danger?: boolean }) {
   const theme = useTheme();
   return (
-    <Pressable onPress={onPress} style={[styles.row, { borderColor: theme.colors.border }]}>
+    <AnimatedPressable onPress={onPress} style={[styles.row, { borderColor: theme.colors.border }]} scaleTo={0.98}>
       <Text style={{ color: danger ? theme.colors.danger : theme.colors.textPrimary, fontWeight: '600' }}>{label}</Text>
       <Text style={{ color: theme.colors.textSecondary }}>›</Text>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 

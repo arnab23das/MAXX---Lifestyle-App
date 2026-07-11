@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/theme';
 import { Level, LessonContent } from '@/types/content';
 import { Button } from '@/components/Button';
 import { ScreenContainer } from '@/components/ScreenContainer';
+import { AnimatedPressable } from '@/components/AnimatedPressable';
+import { FadeSlideIn } from '@/components/FadeSlideIn';
 
 interface Props {
   level: Level;
@@ -36,13 +38,13 @@ export function LessonLevelScreen({ level, onFinish }: Props) {
       </Text>
 
       {!showQuestion ? (
-        <View>
+        <FadeSlideIn key={cardIndex}>
           <Text style={[theme.typography.h1, { color: theme.colors.textPrimary, marginBottom: 12 }]}>{card.heading}</Text>
           <Text style={[theme.typography.body, { color: theme.colors.textSecondary, lineHeight: 24 }]}>{card.body}</Text>
-        </View>
+        </FadeSlideIn>
       ) : (
         content.checkQuestion && (
-          <View>
+          <FadeSlideIn>
             <Text style={[theme.typography.h1, { color: theme.colors.textPrimary, marginBottom: 16 }]}>
               {content.checkQuestion.prompt}
             </Text>
@@ -52,7 +54,7 @@ export function LessonLevelScreen({ level, onFinish }: Props) {
                 const isCorrect = i === content.checkQuestion!.correctIndex;
                 const showResult = answerIndex !== null;
                 return (
-                  <Pressable
+                  <AnimatedPressable
                     key={option}
                     onPress={() => setAnswerIndex(i)}
                     style={[
@@ -65,11 +67,11 @@ export function LessonLevelScreen({ level, onFinish }: Props) {
                     ]}
                   >
                     <Text style={{ color: theme.colors.textPrimary }}>{option}</Text>
-                  </Pressable>
+                  </AnimatedPressable>
                 );
               })}
             </View>
-          </View>
+          </FadeSlideIn>
         )
       )}
 

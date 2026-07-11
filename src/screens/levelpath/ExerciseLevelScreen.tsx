@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/theme';
 import { Level, ExerciseContent } from '@/types/content';
 import { Button } from '@/components/Button';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { BreathingTimer } from '@/components/BreathingTimer';
+import { AnimatedPressable } from '@/components/AnimatedPressable';
+import { FadeSlideIn } from '@/components/FadeSlideIn';
 
 interface Props {
   level: Level;
@@ -36,18 +38,20 @@ export function ExerciseLevelScreen({ level, onFinish }: Props) {
       <Text style={[theme.typography.eyebrow, { color: theme.colors.exercise, marginBottom: 8 }]}>EXERCISE</Text>
 
       {step === null && (
-        <View>
+        <FadeSlideIn>
           <Text style={[theme.typography.h1, { color: theme.colors.textPrimary, marginBottom: 12 }]}>{level.title}</Text>
           <Text style={[theme.typography.body, { color: theme.colors.textSecondary, lineHeight: 24 }]}>{content.intro}</Text>
-        </View>
+        </FadeSlideIn>
       )}
 
       {step?.kind === 'text' && (
-        <Text style={[theme.typography.h2, { color: theme.colors.textPrimary, lineHeight: 28 }]}>{step.prompt}</Text>
+        <FadeSlideIn key={stepIndex}>
+          <Text style={[theme.typography.h2, { color: theme.colors.textPrimary, lineHeight: 28 }]}>{step.prompt}</Text>
+        </FadeSlideIn>
       )}
 
       {step?.kind === 'breathing' && (
-        <View>
+        <FadeSlideIn key={stepIndex}>
           <Text style={[theme.typography.h2, { color: theme.colors.textPrimary, marginBottom: 4 }]}>{step.prompt}</Text>
           <BreathingTimer
             inhaleSeconds={step.inhaleSeconds}
@@ -56,15 +60,15 @@ export function ExerciseLevelScreen({ level, onFinish }: Props) {
             cycles={step.cycles}
             onComplete={() => setBreathingDone(true)}
           />
-        </View>
+        </FadeSlideIn>
       )}
 
       {step?.kind === 'choice' && (
-        <View>
+        <FadeSlideIn key={stepIndex}>
           <Text style={[theme.typography.h2, { color: theme.colors.textPrimary, marginBottom: 16 }]}>{step.prompt}</Text>
           <View style={{ gap: 10 }}>
             {step.options.map((option) => (
-              <Pressable
+              <AnimatedPressable
                 key={option}
                 onPress={() => setChoice(option)}
                 style={[
@@ -76,10 +80,10 @@ export function ExerciseLevelScreen({ level, onFinish }: Props) {
                 ]}
               >
                 <Text style={{ color: theme.colors.textPrimary }}>{option}</Text>
-              </Pressable>
+              </AnimatedPressable>
             ))}
           </View>
-        </View>
+        </FadeSlideIn>
       )}
 
       <View style={{ marginTop: 32 }}>

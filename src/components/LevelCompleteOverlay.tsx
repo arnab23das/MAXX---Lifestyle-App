@@ -1,5 +1,5 @@
-import React from 'react';
-import { Modal, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Modal, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/theme';
 import { Button } from '@/components/Button';
 
@@ -13,11 +13,30 @@ interface Props {
 
 export function LevelCompleteOverlay({ visible, xpGained, creditsGained, usedFreeze, onDone }: Props) {
   const theme = useTheme();
+  const pop = useRef(new Animated.Value(0)).current;
+  const wobble = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      pop.setValue(0);
+      Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 10 }).start();
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(wobble, { toValue: 1, duration: 900, useNativeDriver: true }),
+          Animated.timing(wobble, { toValue: 0, duration: 900, useNativeDriver: true }),
+        ])
+      ).start();
+    }
+  }, [visible, pop, wobble]);
+
+  const cardScale = pop.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] });
+  const emojiRotate = wobble.interpolate({ inputRange: [0, 1], outputRange: ['-8deg', '8deg'] });
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.backdrop}>
-        <View style={[styles.card, { backgroundColor: theme.colors.surfaceRaised }]}>
-          <Text style={styles.emoji}>🎉</Text>
+        <Animated.View style={[styles.card, { backgroundColor: theme.colors.surfaceRaised, transform: [{ scale: cardScale }] }]}>
+          <Animated.Text style={[styles.emoji, { transform: [{ rotate: emojiRotate }] }]}>🎉</Animated.Text>
           <Text style={[theme.typography.h1, { color: theme.colors.textPrimary, textAlign: 'center' }]}>Level complete!</Text>
           <View style={styles.rewards}>
             <Text style={[theme.typography.bodyStrong, { color: theme.colors.xp }]}>+{xpGained} XP</Text>
@@ -29,7 +48,7 @@ export function LevelCompleteOverlay({ visible, xpGained, creditsGained, usedFre
             </Text>
           )}
           <Button label="Continue" onPress={onDone} style={{ marginTop: 20 }} />
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );

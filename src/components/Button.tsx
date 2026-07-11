@@ -18,18 +18,22 @@ interface Props {
 export function Button({ label, onPress, variant = 'primary', disabled, loading, style, fullWidth = true }: Props) {
   const theme = useTheme();
   const lipOffset = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(1)).current;
 
   const hasLip = variant === 'primary' || variant === 'danger';
   const fill = variant === 'primary' ? theme.colors.primary : variant === 'danger' ? theme.colors.sos : variant === 'secondary' ? theme.colors.surface : 'transparent';
   const lipColor = variant === 'primary' ? theme.colors.primaryLip : theme.colors.sosDeep;
   const textColor = variant === 'ghost' ? theme.colors.primary : variant === 'secondary' ? theme.colors.textPrimary : theme.colors.onPrimary;
   const borderColor = variant === 'secondary' ? theme.colors.border : 'transparent';
+  const radius = variant === 'ghost' ? theme.radii.md : theme.radii.lg;
 
   function handlePressIn() {
     if (hasLip) Animated.timing(lipOffset, { toValue: 1, duration: 80, useNativeDriver: true }).start();
+    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
   }
   function handlePressOut() {
     if (hasLip) Animated.timing(lipOffset, { toValue: 0, duration: 80, useNativeDriver: true }).start();
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 8 }).start();
   }
 
   const translateY = lipOffset.interpolate({ inputRange: [0, 1], outputRange: [0, theme.lip.height] });
@@ -38,7 +42,8 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading,
     <Animated.View
       style={[
         fullWidth && styles.fullWidth,
-        hasLip && { backgroundColor: lipColor, borderRadius: theme.radii.md, opacity: disabled ? 0.5 : 1 },
+        hasLip && { backgroundColor: lipColor, borderRadius: radius, opacity: disabled ? 0.5 : 1 },
+        { transform: [{ scale }] },
         style,
       ]}
     >
@@ -54,7 +59,7 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading,
         <Animated.View
           style={[
             styles.base,
-            { backgroundColor: fill, borderColor, borderRadius: theme.radii.md, transform: [{ translateY }] },
+            { backgroundColor: fill, borderColor, borderRadius: radius, transform: [{ translateY }] },
             !hasLip && { opacity: disabled ? 0.5 : 1 },
           ]}
         >
@@ -72,8 +77,8 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading,
 const styles = StyleSheet.create({
   pressableWrap: { alignSelf: 'stretch' },
   base: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 22,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
