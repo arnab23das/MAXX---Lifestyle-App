@@ -5,6 +5,7 @@ import { Level, ExerciseContent } from '@/types/content';
 import { Button } from '@/components/Button';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { BreathingTimer } from '@/components/BreathingTimer';
+import { CountdownTimer } from '@/components/CountdownTimer';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { FadeSlideIn } from '@/components/FadeSlideIn';
 
@@ -13,73 +14,78 @@ interface Props {
   onFinish: () => void;
 }
 
+type Phase = 'intro' | 'active' | 'complete';
+
+// Standard box-breathing pattern used to turn a total duration into cycles
+// for the "breathing_timer" format, which the schema only gives a total for.
+const BREATH_INHALE = 4;
+const BREATH_HOLD = 4;
+const BREATH_EXHALE = 6;
+
 export function ExerciseLevelScreen({ level, onFinish }: Props) {
   const theme = useTheme();
   const content = level.content as ExerciseContent;
-  const [stepIndex, setStepIndex] = useState(-1); // -1 = intro
-  const [choice, setChoice] = useState<string | null>(null);
-  const [breathingDone, setBreathingDone] = useState(false);
+  const [phase, setPhase] = useState<Phase>('intro');
+  const [rating, setRating] = useState<number | null>(null);
 
-  const step = stepIndex >= 0 ? content.steps[stepIndex] : null;
-  const isLastStep = stepIndex === content.steps.length - 1;
-
-  function goNext() {
-    setChoice(null);
-    setBreathingDone(false);
-    if (stepIndex === content.steps.length - 1) {
-      onFinish();
-    } else {
-      setStepIndex((i) => i + 1);
-    }
-  }
+  const cycles = Math.max(1, Math.round(content.durationSeconds / (BREATH_INHALE + BREATH_HOLD + BREATH_EXHALE)));
 
   return (
     <ScreenContainer scroll>
       <Text style={[theme.typography.eyebrow, { color: theme.colors.exercise, marginBottom: 8 }]}>EXERCISE</Text>
 
-      {step === null && (
+      {phase === 'intro' && (
         <FadeSlideIn>
           <Text style={[theme.typography.h1, { color: theme.colors.textPrimary, marginBottom: 12 }]}>{level.title}</Text>
-          <Text style={[theme.typography.body, { color: theme.colors.textSecondary, lineHeight: 24 }]}>{content.intro}</Text>
+          <Text style={[theme.typography.body, { color: theme.colors.textSecondary, lineHeight: 24 }]}>{content.instruction}</Text>
         </FadeSlideIn>
       )}
 
-      {step?.kind === 'text' && (
-        <FadeSlideIn key={stepIndex}>
-          <Text style={[theme.typography.h2, { color: theme.colors.textPrimary, lineHeight: 28 }]}>{step.prompt}</Text>
-        </FadeSlideIn>
-      )}
-
-      {step?.kind === 'breathing' && (
-        <FadeSlideIn key={stepIndex}>
-          <Text style={[theme.typography.h2, { color: theme.colors.textPrimary, marginBottom: 4 }]}>{step.prompt}</Text>
+      {phase === 'active' && content.format === 'breathing_timer' && (
+        <FadeSlideIn>
           <BreathingTimer
-            inhaleSeconds={step.inhaleSeconds}
-            holdSeconds={step.holdSeconds}
-            exhaleSeconds={step.exhaleSeconds}
-            cycles={step.cycles}
-            onComplete={() => setBreathingDone(true)}
+            inhaleSeconds={BREATH_INHALE}
+            holdSeconds={BREATH_HOLD}
+            exhaleSeconds={BREATH_EXHALE}
+            cycles={cycles}
+            onComplete={() => setPhase('complete')}
           />
         </FadeSlideIn>
       )}
 
-      {step?.kind === 'choice' && (
-        <FadeSlideIn key={stepIndex}>
-          <Text style={[theme.typography.h2, { color: theme.colors.textPrimary, marginBottom: 16 }]}>{step.prompt}</Text>
-          <View style={{ gap: 10 }}>
-            {step.options.map((option) => (
+      {phase === 'active' && (content.format === 'timed_reflection' || content.format === 'countdown') && (
+        <FadeSlideIn>
+          <Text style={[theme.typography.body, { color: theme.colors.textSecondary, marginBottom: 8, textAlign: 'center' }]}>
+            {content.instruction}
+          </Text>
+          <CountdownTimer durationSeconds={content.durationSeconds} onComplete={() => setPhase('complete')} />
+        </FadeSlideIn>
+      )}
+
+      {phase === 'active' && content.format === 'real_world_task' && (
+        <FadeSlideIn>
+          <Text style={[theme.typography.body, { color: theme.colors.textSecondary, lineHeight: 24, marginBottom: 24 }]}>
+            {content.instruction}
+          </Text>
+          <Button label="I did it" onPress={() => setPhase('complete')} variant="secondary" />
+        </FadeSlideIn>
+      )}
+
+      {phase === 'complete' && (
+        <FadeSlideIn>
+          <Text style={[theme.typography.h2, { color: theme.colors.textPrimary, marginBottom: 16 }]}>{content.completionPrompt}</Text>
+          <View style={styles.scaleRow}>
+            {[1, 2, 3, 4, 5].map((n) => (
               <AnimatedPressable
-                key={option}
-                onPress={() => setChoice(option)}
+                key={n}
+                onPress={() => setRating(n)}
+                scaleTo={1.15}
                 style={[
-                  styles.option,
-                  {
-                    borderColor: choice === option ? theme.colors.exercise : theme.colors.border,
-                    backgroundColor: choice === option ? theme.colors.exerciseSoft : theme.colors.surface,
-                  },
+                  styles.scaleDot,
+                  { borderColor: theme.colors.exercise, backgroundColor: rating === n ? theme.colors.exercise : 'transparent' },
                 ]}
               >
-                <Text style={{ color: theme.colors.textPrimary }}>{option}</Text>
+                <Text style={{ color: rating === n ? theme.colors.onPrimary : theme.colors.exercise, fontWeight: '700' }}>{n}</Text>
               </AnimatedPressable>
             ))}
           </View>
@@ -88,9 +94,9 @@ export function ExerciseLevelScreen({ level, onFinish }: Props) {
 
       <View style={{ marginTop: 32 }}>
         <Button
-          label={stepIndex === -1 ? 'Start' : isLastStep ? 'Finish exercise' : 'Next'}
-          onPress={goNext}
-          disabled={(step?.kind === 'choice' && !choice) || (step?.kind === 'breathing' && !breathingDone)}
+          label={phase === 'intro' ? 'Start' : phase === 'complete' ? 'Finish exercise' : 'In progress…'}
+          onPress={phase === 'intro' ? () => setPhase('active') : onFinish}
+          disabled={phase === 'active' || (phase === 'complete' && rating === null)}
         />
       </View>
     </ScreenContainer>
@@ -98,5 +104,6 @@ export function ExerciseLevelScreen({ level, onFinish }: Props) {
 }
 
 const styles = StyleSheet.create({
-  option: { padding: 14, borderRadius: 14, borderWidth: 1.5 },
+  scaleRow: { flexDirection: 'row', gap: 10 },
+  scaleDot: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
 });

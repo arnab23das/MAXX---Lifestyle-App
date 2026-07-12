@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTheme } from '@/theme';
-import { Level, DocumentationContent } from '@/types/content';
+import { Level, DocumentationContent, DocumentationField } from '@/types/content';
 import { Button } from '@/components/Button';
 import { Checkbox } from '@/components/Checkbox';
 import { ScreenContainer } from '@/components/ScreenContainer';
@@ -36,6 +36,59 @@ function ScalePicker({ value, onChange, color }: { value: number | null; onChang
   );
 }
 
+function FieldInput({
+  field,
+  value,
+  onChange,
+}: {
+  field: DocumentationField;
+  value: string | number | undefined;
+  onChange: (v: string | number) => void;
+}) {
+  const theme = useTheme();
+
+  if (field.input === 'scale_1_5') {
+    return <ScalePicker value={typeof value === 'number' ? value : null} onChange={onChange} color={theme.colors.documentation} />;
+  }
+
+  if (field.input === 'single_select') {
+    return (
+      <View style={styles.tagWrap}>
+        {(field.options ?? []).map((opt) => {
+          const selected = value === opt;
+          return (
+            <AnimatedPressable
+              key={opt}
+              onPress={() => onChange(opt)}
+              style={[
+                styles.tag,
+                { borderColor: theme.colors.border, backgroundColor: selected ? theme.colors.documentationSoft : theme.colors.surface },
+              ]}
+            >
+              <Text style={{ color: theme.colors.textPrimary, fontSize: 13 }}>{opt}</Text>
+            </AnimatedPressable>
+          );
+        })}
+      </View>
+    );
+  }
+
+  return (
+    <TextInput
+      value={value !== undefined ? String(value) : ''}
+      onChangeText={(text) => onChange(field.input === 'number' ? Number(text.replace(/[^0-9]/g, '')) : text)}
+      placeholder={field.input === 'number' ? '0' : 'Type here…'}
+      placeholderTextColor={theme.colors.textSecondary}
+      keyboardType={field.input === 'number' ? 'number-pad' : 'default'}
+      multiline={field.input === 'long_text'}
+      style={[
+        field.input === 'long_text' ? styles.textArea : styles.textInput,
+        { borderColor: theme.colors.border, color: theme.colors.textPrimary, backgroundColor: theme.colors.surface },
+      ]}
+    />
+  );
+}
+
 export function DocumentationLevelScreen({ level, onFinish }: Props) {
   const theme = useTheme();
   const content = level.content as DocumentationContent;
@@ -43,33 +96,26 @@ export function DocumentationLevelScreen({ level, onFinish }: Props) {
   const profile = useAppStore((s) => s.profile);
   const isDemo = useAppStore((s) => s.isDemo);
 
-  const [mood, setMood] = useState<number | null>(null);
-  const [craving, setCraving] = useState<number | null>(null);
-  const [wins, setWins] = useState<Set<string>>(new Set());
-  const [freeText, setFreeText] = useState('');
+  const [answers, setAnswers] = useState<Record<string, string | number>>({});
   const [shareToCommunity, setShareToCommunity] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const moodPrompt = content.prompts.find((p) => p.kind === 'mood_scale');
-  const cravingPrompt = content.prompts.find((p) => p.kind === 'craving_scale');
-  const winsPrompt = content.prompts.find((p) => p.kind === 'win_tag_multiselect');
-  const freeTextPrompt = content.prompts.find((p) => p.kind === 'free_text');
-
-  function toggleWin(win: string) {
-    setWins((prev) => {
-      const next = new Set(prev);
-      if (next.has(win)) next.delete(win);
-      else next.add(win);
-      return next;
-    });
+  function setField(key: string, value: string | number) {
+    setAnswers((prev) => ({ ...prev, [key]: value }));
   }
+
+  const shareText = () => {
+    const textField = content.fields.find((f) => f.input === 'long_text' || f.input === 'short_text');
+    const value = textField ? answers[textField.key] : undefined;
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : 'Shared a reflection from today’s check-in.';
+  };
 
   async function handleSave() {
     setError(null);
 
     if (shareToCommunity) {
-      const check = checkPostText(freeText || '(shared a reflection)');
+      const check = checkPostText(shareText());
       if (!check.allowed) {
         setError(check.reason ?? 'This entry can’t be shared as written.');
         return;
@@ -77,7 +123,6 @@ export function DocumentationLevelScreen({ level, onFinish }: Props) {
     }
 
     if (isDemo) {
-      // Nothing to persist without a real account — just advance.
       onFinish();
       return;
     }
@@ -87,10 +132,7 @@ export function DocumentationLevelScreen({ level, onFinish }: Props) {
     try {
       const entry = await createJournalEntry(session.user.id, {
         levelId: level.id,
-        mood,
-        craving,
-        wins: [...wins],
-        freeText,
+        answers,
         isShared: shareToCommunity,
       });
 
@@ -99,7 +141,7 @@ export function DocumentationLevelScreen({ level, onFinish }: Props) {
           authorId: session.user.id,
           authorDisplayName: profile?.displayName ?? 'A MAXX user',
           region: profile?.region ?? null,
-          text: freeText.trim().length > 0 ? freeText.trim() : 'Shared a reflection from today’s check-in.',
+          text: shareText(),
           sourceJournalEntryId: entry.id,
         });
       }
@@ -115,73 +157,28 @@ export function DocumentationLevelScreen({ level, onFinish }: Props) {
     <ScreenContainer scroll>
       <Text style={[theme.typography.eyebrow, { color: theme.colors.documentation, marginBottom: 8 }]}>DOCUMENTATION</Text>
       <Text style={[theme.typography.h1, { color: theme.colors.textPrimary, marginBottom: 8 }]}>{level.title}</Text>
-      <Text style={[theme.typography.body, { color: theme.colors.textSecondary, marginBottom: 24 }]}>{content.intro}</Text>
+      <Text style={[theme.typography.body, { color: theme.colors.textSecondary, marginBottom: 24 }]}>{content.checkInPrompt}</Text>
 
-      {moodPrompt && (
-        <View style={styles.block}>
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, marginBottom: 8 }]}>{moodPrompt.label}</Text>
-          <ScalePicker value={mood} onChange={setMood} color={theme.colors.documentation} />
-        </View>
-      )}
+      {content.fields.map((field, i) => (
+        <FadeSlideIn key={field.key} index={i} style={styles.block}>
+          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, marginBottom: 8 }]}>{field.label}</Text>
+          <FieldInput field={field} value={answers[field.key]} onChange={(v) => setField(field.key, v)} />
+        </FadeSlideIn>
+      ))}
 
-      {cravingPrompt && (
-        <View style={styles.block}>
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, marginBottom: 8 }]}>{cravingPrompt.label}</Text>
-          <ScalePicker value={craving} onChange={setCraving} color={theme.colors.exercise} />
-        </View>
-      )}
-
-      {winsPrompt?.options && (
-        <View style={styles.block}>
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, marginBottom: 8 }]}>{winsPrompt.label}</Text>
-          <View style={styles.tagWrap}>
-            {winsPrompt.options.map((opt) => {
-              const selected = wins.has(opt);
-              return (
-                <AnimatedPressable
-                  key={opt}
-                  onPress={() => toggleWin(opt)}
-                  style={[
-                    styles.tag,
-                    { borderColor: theme.colors.border, backgroundColor: selected ? theme.colors.documentationSoft : theme.colors.surface },
-                  ]}
-                >
-                  <Text style={{ color: theme.colors.textPrimary, fontSize: 13 }}>{opt}</Text>
-                </AnimatedPressable>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      {freeTextPrompt && (
-        <View style={styles.block}>
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary, marginBottom: 8 }]}>{freeTextPrompt.label}</Text>
-          <TextInput
-            value={freeText}
-            onChangeText={setFreeText}
-            placeholder="Write as much or as little as you like…"
-            placeholderTextColor={theme.colors.textSecondary}
-            multiline
-            style={[
-              styles.textArea,
-              { borderColor: theme.colors.border, color: theme.colors.textPrimary, backgroundColor: theme.colors.surface },
-            ]}
+      {content.shareableToCommunity && (
+        <View style={[styles.block, { marginTop: 8 }]}>
+          <Checkbox
+            checked={shareToCommunity}
+            onToggle={() => setShareToCommunity((v) => !v)}
+            label={
+              <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
+                Share this entry to the MAXX community feed. Your entry stays private unless you check this box.
+              </Text>
+            }
           />
         </View>
       )}
-
-      <View style={[styles.block, { marginTop: 8 }]}>
-        <Checkbox
-          checked={shareToCommunity}
-          onToggle={() => setShareToCommunity((v) => !v)}
-          label={
-            <Text style={[theme.typography.caption, { color: theme.colors.textSecondary }]}>
-              Share this entry to the MAXX community feed. Your entry stays private unless you check this box.
-            </Text>
-          }
-        />
-      </View>
 
       {error && <Text style={{ color: theme.colors.danger, marginTop: 8 }}>{error}</Text>}
 
@@ -198,5 +195,6 @@ const styles = StyleSheet.create({
   scaleDot: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   tagWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
+  textInput: { borderWidth: 1.5, borderRadius: 14, padding: 14, fontSize: 15 },
   textArea: { borderWidth: 1.5, borderRadius: 14, padding: 14, minHeight: 100, textAlignVertical: 'top', fontSize: 15 },
 });

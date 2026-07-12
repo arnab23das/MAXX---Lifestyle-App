@@ -12,56 +12,55 @@ interface Props {
   onFinish: () => void;
 }
 
+/** -1 = the lesson fact itself; 0..questions.length-1 = each MCQ in turn. */
 export function LessonLevelScreen({ level, onFinish }: Props) {
   const theme = useTheme();
   const content = level.content as LessonContent;
-  const [cardIndex, setCardIndex] = useState(0);
+  const [step, setStep] = useState(-1);
   const [answerIndex, setAnswerIndex] = useState<number | null>(null);
 
-  const isLastCard = cardIndex >= content.cards.length - 1;
-  const showQuestion = isLastCard && !!content.checkQuestion;
-  const card = content.cards[cardIndex];
+  const totalSteps = 1 + content.questions.length;
+  const question = step >= 0 ? content.questions[step] : null;
+  const answered = answerIndex !== null;
+  const isCorrect = question ? answerIndex === question.correctIndex : false;
 
   function handleNext() {
-    if (!isLastCard) {
-      setCardIndex((i) => i + 1);
+    if (question && !answered) return;
+    if (step >= content.questions.length - 1) {
+      onFinish();
       return;
     }
-    if (content.checkQuestion && answerIndex === null) return;
-    onFinish();
+    setAnswerIndex(null);
+    setStep((s) => s + 1);
   }
 
   return (
     <ScreenContainer scroll>
       <Text style={[theme.typography.eyebrow, { color: theme.colors.lesson, marginBottom: 8 }]}>
-        LESSON • {cardIndex + 1}/{content.cards.length + (content.checkQuestion ? 1 : 0)}
+        LESSON • {step + 2}/{totalSteps}
       </Text>
 
-      {!showQuestion ? (
-        <FadeSlideIn key={cardIndex}>
-          <Text style={[theme.typography.h1, { color: theme.colors.textPrimary, marginBottom: 12 }]}>{card.heading}</Text>
-          <Text style={[theme.typography.body, { color: theme.colors.textSecondary, lineHeight: 24 }]}>{card.body}</Text>
+      {step === -1 ? (
+        <FadeSlideIn>
+          <Text style={[theme.typography.h1, { color: theme.colors.textPrimary, marginBottom: 12 }]}>{level.title}</Text>
+          <Text style={[theme.typography.body, { color: theme.colors.textSecondary, lineHeight: 24 }]}>{content.lessonText}</Text>
         </FadeSlideIn>
       ) : (
-        content.checkQuestion && (
-          <FadeSlideIn>
-            <Text style={[theme.typography.h1, { color: theme.colors.textPrimary, marginBottom: 16 }]}>
-              {content.checkQuestion.prompt}
-            </Text>
+        question && (
+          <FadeSlideIn key={step}>
+            <Text style={[theme.typography.h1, { color: theme.colors.textPrimary, marginBottom: 16 }]}>{question.prompt}</Text>
             <View style={{ gap: 10 }}>
-              {content.checkQuestion.options.map((option, i) => {
+              {question.options.map((option, i) => {
                 const selected = answerIndex === i;
-                const isCorrect = i === content.checkQuestion!.correctIndex;
-                const showResult = answerIndex !== null;
+                const showResult = answered && selected;
                 return (
                   <AnimatedPressable
                     key={option}
-                    onPress={() => setAnswerIndex(i)}
+                    onPress={() => !answered && setAnswerIndex(i)}
                     style={[
                       styles.option,
                       {
-                        borderColor:
-                          showResult && selected ? (isCorrect ? theme.colors.success : theme.colors.danger) : theme.colors.border,
+                        borderColor: showResult ? (isCorrect ? theme.colors.success : theme.colors.danger) : theme.colors.border,
                         backgroundColor: selected ? theme.colors.lessonSoft : theme.colors.surface,
                       },
                     ]}
@@ -71,15 +70,27 @@ export function LessonLevelScreen({ level, onFinish }: Props) {
                 );
               })}
             </View>
+            {answered && (
+              <FadeSlideIn>
+                <Text
+                  style={[
+                    theme.typography.body,
+                    { color: isCorrect ? theme.colors.success : theme.colors.danger, marginTop: 14, lineHeight: 22 },
+                  ]}
+                >
+                  {isCorrect ? question.feedbackCorrect : question.feedbackIncorrect}
+                </Text>
+              </FadeSlideIn>
+            )}
           </FadeSlideIn>
         )
       )}
 
       <View style={{ marginTop: 32 }}>
         <Button
-          label={showQuestion ? 'Finish lesson' : 'Continue'}
+          label={step === -1 ? 'Continue' : step === content.questions.length - 1 ? 'Finish lesson' : 'Next question'}
           onPress={handleNext}
-          disabled={showQuestion && answerIndex === null}
+          disabled={!!question && !answered}
         />
       </View>
     </ScreenContainer>

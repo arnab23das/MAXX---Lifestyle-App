@@ -6,10 +6,7 @@ interface JournalRow {
   user_id: string;
   level_id: string | null;
   created_at: string;
-  mood: number | null;
-  craving: number | null;
-  wins: string[];
-  free_text: string;
+  answers: Record<string, string | number>;
   is_shared: boolean;
 }
 
@@ -19,27 +16,21 @@ function fromRow(row: JournalRow): JournalEntry {
     userId: row.user_id,
     levelId: row.level_id,
     createdAt: row.created_at,
-    mood: row.mood,
-    craving: row.craving,
-    wins: row.wins ?? [],
-    freeText: row.free_text,
+    answers: row.answers ?? {},
     isShared: row.is_shared,
   };
 }
 
 export async function createJournalEntry(
   userId: string,
-  entry: { levelId: string | null; mood: number | null; craving: number | null; wins: string[]; freeText: string; isShared: boolean }
+  entry: { levelId: string | null; answers: Record<string, string | number>; isShared: boolean }
 ): Promise<JournalEntry> {
   const { data, error } = await supabase
     .from('journal_entries')
     .insert({
       user_id: userId,
       level_id: entry.levelId,
-      mood: entry.mood,
-      craving: entry.craving,
-      wins: entry.wins,
-      free_text: entry.freeText,
+      answers: entry.answers,
       is_shared: entry.isShared,
     })
     .select()

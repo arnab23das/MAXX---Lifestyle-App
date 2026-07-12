@@ -37,10 +37,7 @@ export interface JournalEntry {
   userId: string;
   levelId: string | null;
   createdAt: string;
-  mood: number | null; // 1-5
-  craving: number | null; // 1-5
-  wins: string[];
-  freeText: string;
+  answers: Record<string, string | number>; // keyed by each DocumentationField's `key`
   isShared: boolean; // opt-in per entry (§4, §6, §9)
 }
 

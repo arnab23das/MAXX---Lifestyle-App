@@ -1,10 +1,26 @@
 // Modular Track -> Path -> Level content model (spec §2, §4, §12 phase 1).
 // New goal tracks (Track 2, Track 3) are added by inserting data that
 // satisfies these types — never by branching app code per track.
+//
+// Level content shape follows the "MAXX — Level Design & Generation Prompt"
+// spec: three distinct level types (documentation/lesson/exercise), each
+// grouped into one of five chapters per addiction category.
 
-export type LevelType = 'lesson' | 'exercise' | 'documentation';
+export type LevelType = 'documentation' | 'lesson' | 'exercise';
 
 export type TrackId = 'addictions' | 'track_2' | 'track_3';
+
+export type Chapter = 'awareness' | 'triggers' | 'tools' | 'reflection' | 'maintenance';
+
+export const CHAPTER_ORDER: Chapter[] = ['awareness', 'triggers', 'tools', 'reflection', 'maintenance'];
+
+export const CHAPTER_LABELS: Record<Chapter, string> = {
+  awareness: 'Awareness',
+  triggers: 'Triggers',
+  tools: 'Tools',
+  reflection: 'Reflection',
+  maintenance: 'Maintenance',
+};
 
 /** A top-level goal a user can pick on the Goal Selection screen. */
 export interface Track {
@@ -25,54 +41,67 @@ export interface HabitCategory {
   isCustom?: boolean; // true for user-authored "Other" entries
 }
 
-/** One card of a Lesson level. */
-export interface LessonCard {
-  id: string;
-  heading: string;
-  body: string;
-}
+// ---------------------------------------------------------------------------
+// Documentation: a structured check-in, 2-4 fields + free text.
+// ---------------------------------------------------------------------------
 
-export interface LessonContent {
-  type: 'lesson';
-  cards: LessonCard[];
-  checkQuestion?: {
-    prompt: string;
-    options: string[];
-    correctIndex: number;
-  };
-}
+export type DocumentationInputType = 'number' | 'short_text' | 'long_text' | 'scale_1_5' | 'single_select';
 
-export type ExerciseStep =
-  | { kind: 'text'; id: string; prompt: string; durationSeconds?: number }
-  | { kind: 'breathing'; id: string; prompt: string; inhaleSeconds: number; holdSeconds: number; exhaleSeconds: number; cycles: number }
-  | { kind: 'choice'; id: string; prompt: string; options: string[] };
-
-export interface ExerciseContent {
-  type: 'exercise';
-  intro: string;
-  steps: ExerciseStep[];
-}
-
-export interface DocumentationPrompt {
-  id: string;
+export interface DocumentationField {
+  key: string;
   label: string;
-  kind: 'mood_scale' | 'craving_scale' | 'free_text' | 'win_tag_multiselect';
-  options?: string[];
+  input: DocumentationInputType;
+  options?: string[]; // required when input === 'single_select'
 }
 
 export interface DocumentationContent {
   type: 'documentation';
-  intro: string;
-  prompts: DocumentationPrompt[];
+  checkInPrompt: string;
+  fields: DocumentationField[];
+  shareableToCommunity: boolean;
 }
 
-export type LevelContent = LessonContent | ExerciseContent | DocumentationContent;
+// ---------------------------------------------------------------------------
+// Lesson: one evidence-based fact, then 1-3 MCQs with per-answer feedback.
+// ---------------------------------------------------------------------------
+
+export interface LessonQuestion {
+  prompt: string;
+  options: string[];
+  correctIndex: number;
+  feedbackCorrect: string;
+  feedbackIncorrect: string;
+}
+
+export interface LessonContent {
+  type: 'lesson';
+  lessonText: string;
+  questions: LessonQuestion[];
+}
+
+// ---------------------------------------------------------------------------
+// Exercise: one practical action, doable in 1-5 minutes, no equipment.
+// ---------------------------------------------------------------------------
+
+export type ExerciseFormat = 'breathing_timer' | 'timed_reflection' | 'real_world_task' | 'countdown';
+
+export interface ExerciseContent {
+  type: 'exercise';
+  instruction: string;
+  format: ExerciseFormat;
+  durationSeconds: number;
+  completionPrompt: string;
+}
+
+export type LevelContent = DocumentationContent | LessonContent | ExerciseContent;
 
 export interface Level {
-  id: string;
+  id: string; // {categoryId}_{chapter}_{nn}
   trackId: TrackId;
   categoryIds: string[]; // which HabitCategory selections surface this level
-  order: number; // sequence position within the generated path
+  chapter: Chapter;
+  levelNumber: number; // order within the category's 30-level path
+  order: number; // mirrors levelNumber; kept for path-generator compatibility
   type: LevelType;
   title: string;
   estimatedMinutes: number;
