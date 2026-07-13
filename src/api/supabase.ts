@@ -2,6 +2,7 @@ import 'react-native-url-polyfill/auto';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { secureSessionStorage } from './secureSessionStorage';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -22,7 +23,13 @@ if (!isSupabaseConfigured) {
 // just fail (caught by each api/* call site) until real credentials are set.
 export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder-anon-key', {
   auth: {
-    storage: AsyncStorage,
+    // The session (access + refresh token) is sensitive: on native it's kept
+    // in the platform keychain/keystore via expo-secure-store rather than
+    // plain AsyncStorage, which is unencrypted on both iOS and Android. Web
+    // has no keychain equivalent reachable from JS, so it keeps AsyncStorage
+    // (browser localStorage) there, matching how every web app stores auth
+    // state.
+    storage: Platform.OS === 'web' ? AsyncStorage : secureSessionStorage,
     autoRefreshToken: true,
     persistSession: true,
     // On web, an email-confirmation link redirects back with the session in

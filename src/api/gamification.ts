@@ -25,33 +25,51 @@ function fromRow(row: StateRow): GamificationState {
   };
 }
 
+// gamification_state is read-only for clients (see migration
+// 0004_security_hardening.sql) — every user's row is auto-created by the
+// handle_new_user() trigger on signup, so this should always find a row.
+// There is deliberately no client-side write function for this table
+// anymore: xp/credits/streaks are only ever written by the complete-level
+// Edge Function (see completeLevelOnServer below), using the service-role
+// key, so a modified client can no longer grant itself rewards.
 export async function getGamificationState(userId: string): Promise<GamificationState> {
   const { data, error } = await supabase.from('gamification_state').select('*').eq('user_id', userId).maybeSingle();
   if (error) throw error;
   if (data) return fromRow(data as StateRow);
 
-  // First-time read: create the default row.
-  const { data: created, error: insertError } = await supabase
-    .from('gamification_state')
-    .insert({ user_id: userId })
-    .select()
-    .single();
-  if (insertError) throw insertError;
-  return fromRow(created as StateRow);
+  // Defensive fallback only — the trigger should have already created this
+  // row. Returns an in-memory default without attempting to write it (RLS
+  // no longer allows clients to insert into this table).
+  return {
+    userId,
+    xp: 0,
+    credits: 0,
+    currentStreak: 0,
+    longestStreak: 0,
+    lastActiveDate: null,
+    streakFreezesAvailable: 1,
+    streakFreezesUsedTotal: 0,
+  };
 }
 
-export async function saveGamificationState(state: GamificationState) {
-  const { error } = await supabase
-    .from('gamification_state')
-    .update({
-      xp: state.xp,
-      credits: state.credits,
-      current_streak: state.currentStreak,
-      longest_streak: state.longestStreak,
-      last_active_date: state.lastActiveDate,
-      streak_freezes_available: state.streakFreezesAvailable,
-      streak_freezes_used_total: state.streakFreezesUsedTotal,
-    })
-    .eq('user_id', state.userId);
+export interface LevelCompletionResult {
+  xpGained: number;
+  creditsGained: number;
+  usedFreeze: boolean;
+  alreadyCompleted?: boolean;
+  gamification: StateRow;
+}
+
+/**
+ * Reports a level as finished to the `complete-level` Edge Function, which
+ * independently derives the XP/credit reward from the level id and writes
+ * the new gamification state server-side. This is the only way gamification
+ * state changes for real (non-demo) users.
+ */
+export async function completeLevelOnServer(levelId: string): Promise<LevelCompletionResult> {
+  const { data, error } = await supabase.functions.invoke('complete-level', {
+    body: { levelId },
+  });
   if (error) throw error;
+  return data as LevelCompletionResult;
 }

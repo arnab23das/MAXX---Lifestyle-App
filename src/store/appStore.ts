@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import { UserProfile, LevelProgress, GamificationState } from '@/types/domain';
 import { HabitCategory, GeneratedPath, TrackId, Level } from '@/types/content';
 import { getMyProfile, updateMyProfile, addCustomHabitCategory, getCustomHabitCategories } from '@/api/profile';
-import { getProgressForUser, upsertProgress } from '@/api/progress';
-import { getGamificationState, saveGamificationState } from '@/api/gamification';
+import { getProgressForUser } from '@/api/progress';
+import { getGamificationState, completeLevelOnServer } from '@/api/gamification';
 import { ADDICTION_CATEGORIES, getLevelsForCategory, generatePath, getAllLevelsById } from '@/content';
 import { applyActiveDay, maybeAwardStreakFreeze, todayDateString } from '@/utils/gamification';
 import { syncWidgetData } from '@/widgets/widgetData';
@@ -123,46 +123,65 @@ export const useAppStore = create<AppState>((set, get) => ({
     const level = get().levelsById.get(levelId);
     if (!level) throw new Error(`Unknown level: ${levelId}`);
     const isDemo = get().isDemo;
-
     const prior = get().progress[levelId];
-    if (!isDemo) {
-      await upsertProgress(userId, levelId, {
-        status: 'completed',
-        completedAt: new Date().toISOString(),
-        attempts: (prior?.attempts ?? 0) + 1,
-      });
+
+    if (isDemo) {
+      // Demo mode has no backend at all — this is a local, client-computed
+      // simulation for previewing the app with fake in-memory data, never a
+      // real user, so there's no anti-cheat concern with computing rewards
+      // client-side here the way real users' completions used to be.
+      const gamification = get().gamification;
+      if (!gamification) throw new Error('No gamification state available.');
+      const today = todayDateString();
+      const streakResult = applyActiveDay(gamification, today);
+      const streakFreezesAvailable = maybeAwardStreakFreeze(streakResult.currentStreak, streakResult.streakFreezesAvailable);
+      const nextState: GamificationState = {
+        ...gamification,
+        xp: gamification.xp + level.xpReward,
+        credits: gamification.credits + level.creditReward,
+        currentStreak: streakResult.currentStreak,
+        longestStreak: streakResult.longestStreak,
+        lastActiveDate: today,
+        streakFreezesAvailable,
+        streakFreezesUsedTotal: streakResult.streakFreezesUsedTotal,
+      };
+      set((s) => ({
+        progress: {
+          ...s.progress,
+          [levelId]: { userId, levelId, status: 'completed', completedAt: new Date().toISOString(), attempts: (prior?.attempts ?? 0) + 1 },
+        },
+        gamification: nextState,
+      }));
+      return { xpGained: level.xpReward, creditsGained: level.creditReward, usedFreeze: streakResult.usedFreeze };
     }
 
-    const gamification = get().gamification ?? (isDemo ? null : await getGamificationState(userId));
-    if (!gamification) throw new Error('No gamification state available.');
-    const today = todayDateString();
-    const streakResult = applyActiveDay(gamification, today);
-    const streakFreezesAvailable = maybeAwardStreakFreeze(streakResult.currentStreak, streakResult.streakFreezesAvailable);
-
-    const nextState: GamificationState = {
-      ...gamification,
-      xp: gamification.xp + level.xpReward,
-      credits: gamification.credits + level.creditReward,
-      currentStreak: streakResult.currentStreak,
-      longestStreak: streakResult.longestStreak,
-      lastActiveDate: today,
-      streakFreezesAvailable,
-      streakFreezesUsedTotal: streakResult.streakFreezesUsedTotal,
+    // Real users: the complete-level Edge Function is the sole authority on
+    // rewards (see migration 0004_security_hardening.sql and
+    // supabase/functions/complete-level) — it independently derives the
+    // XP/credit value from the level id and writes gamification_state with
+    // the service-role key. The client only reports "I finished this level"
+    // and reflects back whatever the server decided actually happened.
+    const result = await completeLevelOnServer(levelId);
+    const nextGamification: GamificationState = {
+      userId,
+      xp: result.gamification.xp,
+      credits: result.gamification.credits,
+      currentStreak: result.gamification.current_streak,
+      longestStreak: result.gamification.longest_streak,
+      lastActiveDate: result.gamification.last_active_date,
+      streakFreezesAvailable: result.gamification.streak_freezes_available,
+      streakFreezesUsedTotal: result.gamification.streak_freezes_used_total,
     };
-    if (!isDemo) {
-      await saveGamificationState(nextState);
-    }
-
     set((s) => ({
       progress: {
         ...s.progress,
         [levelId]: { userId, levelId, status: 'completed', completedAt: new Date().toISOString(), attempts: (prior?.attempts ?? 0) + 1 },
       },
-      gamification: nextState,
+      gamification: nextGamification,
     }));
-    syncWidgetData(nextState);
+    syncWidgetData(nextGamification);
 
-    return { xpGained: level.xpReward, creditsGained: level.creditReward, usedFreeze: streakResult.usedFreeze };
+    return { xpGained: result.xpGained, creditsGained: result.creditsGained, usedFreeze: result.usedFreeze };
   },
 
   enterDemoMode: () => {

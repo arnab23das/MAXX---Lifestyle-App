@@ -49,8 +49,8 @@ export function SignUpScreen({ route, navigation }: Props) {
       Alert.alert('One more thing', 'Please agree to the Terms of Use and Privacy Policy to continue.');
       return;
     }
-    if (!email.includes('@') || password.length < 6) {
-      Alert.alert('Check your details', 'Enter a valid email and a password with at least 6 characters.');
+    if (!email.includes('@') || password.length < 8) {
+      Alert.alert('Check your details', 'Enter a valid email and a password with at least 8 characters.');
       return;
     }
     setLoading(true);

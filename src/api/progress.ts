@@ -19,26 +19,13 @@ function fromRow(row: ProgressRow): LevelProgress {
   };
 }
 
+// level_progress is read-only for clients (see migration
+// 0004_security_hardening.sql) — writes happen exclusively inside the
+// complete-level Edge Function, using the service-role key, so a modified
+// client can't mark levels complete (or reset them back to 'unlocked' to
+// re-farm XP) by writing this table directly.
 export async function getProgressForUser(userId: string): Promise<LevelProgress[]> {
   const { data, error } = await supabase.from('level_progress').select('*').eq('user_id', userId);
   if (error) throw error;
   return (data as ProgressRow[]).map(fromRow);
-}
-
-export async function upsertProgress(
-  userId: string,
-  levelId: string,
-  patch: Partial<Pick<LevelProgress, 'status' | 'completedAt' | 'attempts'>>
-) {
-  const { error } = await supabase.from('level_progress').upsert(
-    {
-      user_id: userId,
-      level_id: levelId,
-      ...(patch.status !== undefined ? { status: patch.status } : {}),
-      ...(patch.completedAt !== undefined ? { completed_at: patch.completedAt } : {}),
-      ...(patch.attempts !== undefined ? { attempts: patch.attempts } : {}),
-    },
-    { onConflict: 'user_id,level_id' }
-  );
-  if (error) throw error;
 }
