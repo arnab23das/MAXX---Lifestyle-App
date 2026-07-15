@@ -542,7 +542,7 @@ export const VAPING_LEVELS: Level[] = [
     creditReward: 1,
     content: {
       type: 'exercise',
-      instruction: 'Think of a recent slip or hard moment. Silently say to yourself: "This is hard. Other people struggle with this too. I can be kind to myself and keep going."',
+      instruction: 'Think of a recent time you hit your vape without meaning to. Silently say to yourself: "This device was designed to be hard to put down — that’s not a personal failing. I can be kind to myself and keep going."',
       format: 'timed_reflection',
       durationSeconds: 60,
       completionPrompt: 'How does it feel to offer yourself that kindness, 1 (strange) to 5 (genuinely comforting)?',
@@ -682,7 +682,7 @@ export const VAPING_LEVELS: Level[] = [
     creditReward: 1,
     content: {
       type: 'exercise',
-      instruction: 'Think of one person you could message if a craving felt like too much to handle alone. You can add them as an emergency contact in the SOS section if it feels right.',
+      instruction: 'Think of one person you could message the next time you’re tempted to borrow a pod or buy a new device. You can add them as an emergency contact in the SOS section if it feels right.',
       format: 'real_world_task',
       durationSeconds: 60,
       completionPrompt: 'How comfortable would you feel reaching out to them, 1 to 5?',

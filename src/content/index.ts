@@ -47,20 +47,43 @@ export function getAllLevelsById(): Map<string, Level> {
   return map;
 }
 
+// Every fixed category follows the same five-chapter shape, and every
+// chapter follows the same six-level type pattern: documentation, lesson,
+// exercise, lesson, exercise, documentation (see e.g. doomscrolling.ts).
+// Round-robining ONE level at a time across N selected categories means the
+// user hits that same type N times in a row (three lessons back to back,
+// three real-world exercise tasks back to back, etc.) — exactly the kind of
+// multi-habit overwhelm the personalization flow should avoid. Round-robining
+// in pairs instead keeps that from stacking: each category's two-level slice
+// pairs a check-in/lesson with the next item in its own sequence, so the
+// merged path naturally alternates types even as more categories are added.
+const PATH_MERGE_CHUNK_SIZE = 2;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
 /**
- * Builds a user's path by round-robin interleaving levels from each selected
- * category, so early progress touches every chosen habit rather than
- * finishing one category before starting the next.
+ * Builds a user's path by round-robin interleaving small chunks of levels
+ * from each selected category (see PATH_MERGE_CHUNK_SIZE above), so early
+ * progress still touches every chosen habit rather than finishing one
+ * category before starting the next, while avoiding long same-type runs
+ * when multiple categories are combined. For a single category this
+ * produces the same order as a plain walk through that category's levels.
  */
 export function generatePath(trackId: TrackId, categories: HabitCategory[]): GeneratedPath {
-  const perCategoryLevels = categories.map((c) => [...getLevelsForCategory(c)].sort((a, b) => a.order - b.order));
+  const perCategoryChunks = categories.map((c) => chunk([...getLevelsForCategory(c)].sort((a, b) => a.order - b.order), PATH_MERGE_CHUNK_SIZE));
   const levelIds: string[] = [];
   let index = 0;
-  let remaining = perCategoryLevels.reduce((sum, l) => sum + l.length, 0);
+  let remaining = perCategoryChunks.reduce((sum, chunks) => sum + chunks.length, 0);
   while (remaining > 0) {
-    for (const levels of perCategoryLevels) {
-      if (index < levels.length) {
-        levelIds.push(levels[index].id);
+    for (const chunks of perCategoryChunks) {
+      if (index < chunks.length) {
+        for (const level of chunks[index]) levelIds.push(level.id);
         remaining -= 1;
       }
     }

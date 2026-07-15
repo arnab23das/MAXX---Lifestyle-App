@@ -53,7 +53,7 @@ Content is modeled as **Track → HabitCategory → Level(type, content)**, enti
 - A `Track` is a top-level goal (only `addictions` is `available` in this build; the other two render as "Coming soon" per spec).
 - A `HabitCategory` is one item in the personalization checklist (doomscrolling, food, vaping, smoking, alcohol, drugs, or a free-text "Other").
 - A `Level` belongs to one or more categories and is one of three types — `lesson`, `exercise`, `documentation` — each with its own typed `content` shape.
-- `generatePath()` (`src/content/index.ts`) round-robin-interleaves each selected category's levels into the user's path, so early progress touches every habit the user picked rather than finishing one category before starting the next.
+- `generatePath()` (`src/content/index.ts`) merges each selected category's levels into the user's path by round-robining two-level chunks per category (not one level at a time), so early progress still touches every habit the user picked, but same-type levels from different categories (e.g. three lessons, or three real-world exercise tasks, back to back) don't stack up and overwhelm the user when multiple addictions are combined.
 
 Adding **Track 2 or 3** later means adding new `Track`/`HabitCategory`/`Level` data and marking the track `available: true` — no screen or navigation code changes.
 
