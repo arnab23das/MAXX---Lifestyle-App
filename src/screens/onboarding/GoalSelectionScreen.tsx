@@ -61,7 +61,7 @@ export function GoalSelectionScreen({ navigation }: Props) {
         ))}
       </View>
 
-      <Pressable onPress={enterDemoMode} style={styles.demoLink}>
+      <Pressable onPress={() => enterDemoMode()} style={styles.demoLink}>
         <Text style={{ color: theme.colors.textSecondary, textDecorationLine: 'underline' }}>
           Just want to look around? View demo
         </Text>

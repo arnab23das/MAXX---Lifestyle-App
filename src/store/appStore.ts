@@ -35,7 +35,7 @@ interface AppState {
    * with in-memory-only fake data — for previewing the app without a
    * working backend. Nothing here is persisted anywhere.
    */
-  enterDemoMode: () => void;
+  enterDemoMode: (categoryIds?: string[]) => void;
   exitDemoMode: () => void;
 }
 
@@ -184,8 +184,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     return { xpGained: result.xpGained, creditsGained: result.creditsGained, usedFreeze: result.usedFreeze };
   },
 
-  enterDemoMode: () => {
-    const categories = ADDICTION_CATEGORIES.filter((c) => !c.isCustom).slice(0, 2);
+  enterDemoMode: (categoryIds) => {
+    const selected = categoryIds?.length
+      ? ADDICTION_CATEGORIES.filter((c) => !c.isCustom && categoryIds.includes(c.id))
+      : [];
+    const categories = selected.length > 0 ? selected : ADDICTION_CATEGORIES.filter((c) => !c.isCustom).slice(0, 2);
     const path = generatePath('addictions', categories);
     const profile: UserProfile = {
       id: DEMO_USER_ID,

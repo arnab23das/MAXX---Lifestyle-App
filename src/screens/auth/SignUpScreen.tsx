@@ -189,7 +189,12 @@ export function SignUpScreen({ route, navigation }: Props) {
         style={{ marginTop: 16 }}
       />
 
-      <Button label="Trouble signing up? View demo instead" onPress={enterDemoMode} variant="ghost" style={{ marginTop: 4 }} />
+      <Button
+        label="Trouble signing up? View demo instead"
+        onPress={() => enterDemoMode(categoryIds)}
+        variant="ghost"
+        style={{ marginTop: 4 }}
+      />
     </ScreenContainer>
   );
 }
