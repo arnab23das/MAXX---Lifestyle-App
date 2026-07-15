@@ -44,7 +44,7 @@ Content is **data, not code**: `Track → HabitCategory → Level`.
 - Only the `addictions` track is `available` in this build; others render "Coming soon."
 - A `Level` is one of three typed content shapes: `lesson`, `exercise`, `documentation`.
 - Per-category level definitions live in `src/content/levels/*.ts` (doomscrolling, food, vaping, smoking, alcohol, drugs, plus `general.ts` for free-text "Other" entries).
-- `generatePath()` (`src/content/index.ts`) round-robin-interleaves each selected category's levels so early progress touches every habit the user picked, rather than clearing one category before starting the next.
+- `generatePath()` (`src/content/index.ts`) merges multiple selected categories' levels by round-robining two-level chunks per category (`PATH_MERGE_CHUNK_SIZE`), not one level at a time — every fixed category follows the same five-chapter, six-level-per-chapter type pattern (documentation/lesson/exercise/lesson/exercise/documentation), so naive 1-at-a-time round robin stacks up N same-type levels in a row for N selected categories (three lessons back to back, three real-world exercise tasks back to back, etc.). Chunking by 2 breaks that up while still surfacing every chosen habit within the first couple of rounds, rather than finishing one category before starting the next. For a single category the output is unchanged.
 - Adding a new track later = new data + `available: true`, no screen/navigation changes.
 
 ### State (`src/store/appStore.ts`, `src/store/authStore.ts`) via Zustand
