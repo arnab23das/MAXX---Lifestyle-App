@@ -1,8 +1,6 @@
 import { HabitCategory } from '@/types/content';
 
 // Personalization checklist for the Addictions track (spec §3.3).
-// "Other" is a fixed entry whose selection reveals a free-text field in the
-// UI (resolved decision: fixed list + free-text "Other").
 export const ADDICTION_CATEGORIES: HabitCategory[] = [
   {
     id: 'doomscrolling',
@@ -45,13 +43,5 @@ export const ADDICTION_CATEGORIES: HabitCategory[] = [
     label: 'Drugs',
     description: 'Recreational or prescription substance use',
     icon: 'pill',
-  },
-  {
-    id: 'other',
-    trackId: 'addictions',
-    label: 'Other',
-    description: 'Tell us what you’re working on',
-    icon: 'dots-horizontal',
-    isCustom: true,
   },
 ];
