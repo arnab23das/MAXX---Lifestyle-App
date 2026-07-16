@@ -7,16 +7,19 @@ import { RootNavigator } from '@/navigation/RootNavigator';
 import { SplashScreen } from '@/screens/onboarding/SplashScreen';
 import { useAppFonts } from '@/theme/useAppFonts';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { PhoneFrame } from '@/components/PhoneFrame';
 
 export default function App() {
   const fontsLoaded = useAppFonts();
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <StatusBar style="light" />
-        <ErrorBoundary>{fontsLoaded ? <RootNavigator /> : <SplashScreen />}</ErrorBoundary>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <PhoneFrame>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <StatusBar style="light" />
+          <ErrorBoundary>{fontsLoaded ? <RootNavigator /> : <SplashScreen />}</ErrorBoundary>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </PhoneFrame>
   );
 }
